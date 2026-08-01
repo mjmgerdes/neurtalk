@@ -1,7 +1,9 @@
 # Demo runbook (2.5 min pitch)
 
 ## Pre-flight (do BEFORE judging starts)
-- [ ] `ollama serve` running (run directly in a terminal — the brew service doesn't start reliably). Verify: `curl localhost:11434/api/tags`
+- [ ] Ollama running with the hosted origin allowed (required if demoing from the github.io URL; harmless otherwise):
+      `OLLAMA_ORIGINS="https://mjmgerdes.github.io" ollama serve`
+      (run directly in a terminal — the brew service doesn't start reliably). Verify: `curl localhost:11434/api/tags`
 - [ ] Warm the model once: hit **Read scene** a single time so gemma4 is resident (first call pays load cost)
 - [ ] `npm run dev` → localhost:5173, camera + mic allowed
 - [ ] Sit where you'll present, click **Calibrate neutral**
