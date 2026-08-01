@@ -170,9 +170,24 @@ export function Onboarding({ onDone }: Props) {
 
   return (
     <div className="screen onboarding wizard">
+      <div className="onboarding-brand">
+        <span className="brand-mark" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>
+          <strong className="brand">NeurTalk</strong>
+          <small>Your voice, kept yours.</small>
+        </span>
+      </div>
       <div className="steps">
         {STEPS.map((s, i) => (
-          <span key={s} className={`step ${i === step ? "current" : i < step ? "done" : ""}`}>
+          <span
+            key={s}
+            className={`step ${i === step ? "current" : i < step ? "done" : ""}`}
+            aria-current={i === step ? "step" : undefined}
+          >
             {i < step ? "✓ " : `${i + 1}. `}
             {s}
           </span>

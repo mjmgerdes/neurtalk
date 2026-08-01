@@ -20,22 +20,53 @@ export default function App() {
 
   return (
     <div className="app">
-      <nav>
-        <span className="brand">NeurTalk</span>
-        <button className={tab === "talk" ? "active" : ""} onClick={() => setTab("talk")}>
-          Talk
-        </button>
-        <button className={tab === "map" ? "active" : ""} onClick={() => setTab("map")}>
-          Communication map
-        </button>
-        <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>
-          History
-        </button>
-        <span className="tagline">Context proposes. The person disposes.</span>
-      </nav>
-      {tab === "talk" && <Talk profile={profile} onProfileChange={setProfile} />}
-      {tab === "map" && <CommunicationMap profile={profile} onProfileChange={setProfile} />}
-      {tab === "history" && <History profile={profile} />}
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <header className="topbar">
+        <div className="brand-lockup" aria-label="NeurTalk home">
+          <span className="brand-mark" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>
+            <strong className="brand">NeurTalk</strong>
+            <small>Adaptive communication</small>
+          </span>
+        </div>
+        <nav className="mainnav" aria-label="Primary navigation">
+          <button
+            className={tab === "talk" ? "active" : ""}
+            aria-current={tab === "talk" ? "page" : undefined}
+            onClick={() => setTab("talk")}
+          >
+            Talk
+          </button>
+          <button
+            className={tab === "map" ? "active" : ""}
+            aria-current={tab === "map" ? "page" : undefined}
+            onClick={() => setTab("map")}
+          >
+            My map
+          </button>
+          <button
+            className={tab === "history" ? "active" : ""}
+            aria-current={tab === "history" ? "page" : undefined}
+            onClick={() => setTab("history")}
+          >
+            History
+          </button>
+        </nav>
+        <span className="privacy-note"><i aria-hidden="true" /> Private &amp; on-device</span>
+      </header>
+      <main id="main-content">
+        {tab === "talk" && <Talk profile={profile} onProfileChange={setProfile} />}
+        {tab === "map" && <CommunicationMap profile={profile} onProfileChange={setProfile} />}
+        {tab === "history" && <History profile={profile} />}
+      </main>
+      <footer className="app-footer">
+        <span>Context proposes.</span>
+        <span>The person disposes.</span>
+      </footer>
     </div>
   );
 }
