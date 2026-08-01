@@ -18,7 +18,7 @@
 "This is everything it knows about me — my people, my objects, how I phrase things. Every memory is editable and deletable. It learns from my choices, not from listening."
 
 **0:40 — The moment** (Talk tab)
-"Now imagine my speech and hands are gone." Point camera at the staged scene (person + mug). Type/keep "Do you need anything?" → **Read scene**.
+"Now imagine my speech and hands are gone." If not already linked from onboarding, hit **Connect phone (glasses)**, scan the QR, tap Start streaming — your phone's view appears on screen ("in the real product this is smart glasses"). Point the phone at the staged scene (person + mug). Type/keep "Do you need anything?" → **Read scene**.
 While it thinks: "A camera frame is going to Gemma running ON this laptop — nothing leaves the device. It reads the scene, crosses it with my bank, and proposes three genuinely different intents."
 
 **1:10 — Select with your head**

@@ -18,8 +18,8 @@ When ALS or similar conditions take away speech and hand control, today's AAC (a
 
 | Step | What happens | Powered by |
 |---|---|---|
-| 1. **Preserve** | While speech is still easy, the person banks their voice, people, objects, routines, and phrasing habits into a personal communication bank | on-device profile (localStorage; nothing leaves the machine) |
-| 2. **See** | The camera reads the current scene — who's present, what objects are visible, what's happening | **Gemma (multimodal), running locally via Ollama** |
+| 1. **Preserve** | Guided onboarding banks the person's voice (a counting sample), contextual audio (uploads or recordings, logged in an on-device audio bank), and the people who matter | on-device profile + IndexedDB audio bank; nothing leaves the machine |
+| 2. **See** | A wearable camera reads the current scene — who's present, what objects are visible, what's happening. Smart glasses in the real product; for the demo, **your phone stands in**: scan a QR code and its rear camera streams to the interface peer-to-peer (WebRTC) | **Gemma (multimodal), running locally via Ollama** |
 | 3. **Propose** | The context brain crosses the scene with the personal bank and generates exactly **3 intent-distinct candidate messages**, phrased the way this person actually talks | **Gemma, running locally** |
 | 4. **Choose** | Head turn (left / center / right) highlights a candidate; a deliberate nod selects; a second confirmation speaks it | MediaPipe Face Landmarker, in-browser |
 | 5. **Learn** | Edits and selections become explicit preferences ("grab" over "bring") that shape future candidates | correction history fed back into Gemma prompts |
@@ -87,8 +87,8 @@ npm run dev                  # open http://localhost:5173, allow camera + mic
 
 ### Demo walkthrough
 
-1. **Preserve me** — record 15–30s of natural speech; the app builds the seed communication bank (people: Sarah, Pedro; objects: blue mug; style: "direct but warm, says grab not bring").
-2. **Talk** — point the camera at a scene, type what was just said to you ("Do you need anything?"), press **Read scene**.
+1. **Onboard** — four steps: record a voice sample (count to 10), add audio context (upload MP3s/videos or record yourself — all logged in the audio bank), add your people, then scan the QR code with your phone so its camera becomes your "glasses".
+2. **Talk** — point the phone (or laptop camera) at a scene, type what was just said to you ("Do you need anything?"), press **Read scene**.
 3. Three candidates appear. **Turn your head** left/center/right to highlight, **nod** to select, nod again to speak.
 4. **Edit** a candidate ("bring" → "grab") — watch *Preference learned* appear, and check the **Communication map** to see the bank grow.
 5. Switch the access dropdown to **keys** or **single switch** — same brain, different body.
@@ -114,7 +114,8 @@ Honesty section for judges:
 src/
   llm/         Gemma client (Ollama, localhost) + prompt design
   input/       MediaPipe head tracker + access-method-agnostic selection core
+  peer/        phone-as-glasses camera link (WebRTC; signaling only via PeerJS broker)
   speech/      voice output (Personal Voice aware)
-  state/       the personal communication bank (on-device)
-  screens/     Preserve Me · Talk · Communication Map
+  state/       personal communication bank + audio bank + history (all on-device)
+  screens/     Onboarding wizard · Talk · Communication Map · History · PhoneCamera
 ```

@@ -13,6 +13,8 @@ import {
 import { speak } from "../speech/voice";
 import { addCorrection } from "../state/profile";
 import { recordSpoken } from "../state/history";
+import QRCode from "qrcode";
+import { phoneJoinUrl, phoneLinkStatus, phoneStream, startHost, subscribePhoneLink } from "../peer/phoneLink";
 
 interface Props {
   profile: Profile;
@@ -48,6 +50,10 @@ export function Talk({ profile, onProfileChange }: Props) {
   const [recentPrompt, setRecentPrompt] = useState("Do you need anything?");
   const shownAtRef = useRef(0);
   const editedSlotsRef = useRef(new Set<number>());
+  const sceneVideoRef = useRef<HTMLVideoElement>(null);
+  const [, linkTick] = useState(0);
+  const [qr, setQr] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState(false);
 
   const sel = useSelection(method, candidates !== null && editing === null, async (slot, stage) => {
     if (!candidates) return;
@@ -91,8 +97,26 @@ export function Talk({ profile, onProfileChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Phone-as-glasses link: when a phone is streaming, its camera is the scene.
+  useEffect(() => subscribePhoneLink(() => linkTick((n) => n + 1)), []);
+  useEffect(() => {
+    const s = phoneStream();
+    if (sceneVideoRef.current && s && sceneVideoRef.current.srcObject !== s) {
+      sceneVideoRef.current.srcObject = s;
+      sceneVideoRef.current.play();
+    }
+  });
+
+  async function connectPhone() {
+    startHost();
+    setQr(await QRCode.toDataURL(phoneJoinUrl(), { width: 220, margin: 1 }));
+    setShowQr(true);
+  }
+
   function captureFrame(): string | null {
-    const v = videoRef.current;
+    // Prefer the phone (glasses stand-in) view; fall back to the laptop camera.
+    const phoneLive = phoneLinkStatus() === "connected" && sceneVideoRef.current?.videoWidth;
+    const v = phoneLive ? sceneVideoRef.current! : videoRef.current;
     if (!v) return null;
     const canvas = document.createElement("canvas");
     canvas.width = v.videoWidth;
@@ -179,13 +203,39 @@ export function Talk({ profile, onProfileChange }: Props) {
           <option value="switch">Access: single switch (scan + Space)</option>
         </select>
         <button onClick={() => trackerRef.current?.calibrate()}>Calibrate neutral</button>
+        <span className={`badge ${phoneLinkStatus() === "connected" ? "on" : "off"}`}>
+          {phoneLinkStatus() === "connected" ? "phone camera live" : "no phone camera"}
+        </span>
+        {phoneLinkStatus() !== "connected" && (
+          <button onClick={connectPhone}>Connect phone (glasses)</button>
+        )}
       </div>
 
-      <div className="videowrap">
-        <video ref={videoRef} muted playsInline className="mirror" />
-        <div className="posedebug">
-          yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · thresholds ±{TUNING.yawThreshold}/
-          {TUNING.nodThreshold}
+      {showQr && phoneLinkStatus() !== "connected" && qr && (
+        <div className="qrbox inline">
+          <img src={qr} alt="QR to connect phone" />
+          <div>
+            <p>Scan with your phone — its camera becomes your visual input.</p>
+            <p className="joinurl">{phoneJoinUrl()}</p>
+            <button className="link" onClick={() => setShowQr(false)}>
+              hide
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="videorow">
+        <div className="videowrap">
+          <video ref={videoRef} muted playsInline className="mirror" />
+          <div className="posedebug">
+            yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · thresholds ±{TUNING.yawThreshold}/
+            {TUNING.nodThreshold}
+          </div>
+          <div className="videolabel">you (head control)</div>
+        </div>
+        <div className={`videowrap ${phoneLinkStatus() === "connected" ? "" : "hiddenvid"}`}>
+          <video ref={sceneVideoRef} muted playsInline />
+          <div className="videolabel">your view (phone camera)</div>
         </div>
       </div>
 

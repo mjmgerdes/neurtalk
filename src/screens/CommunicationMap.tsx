@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Profile } from "../types";
 import { saveProfile } from "../state/profile";
+import { deleteAudio, getAudioUrl, listAudio, type AudioItem } from "../state/audioBank";
 
 interface Props {
   profile: Profile;
@@ -15,6 +16,12 @@ export function CommunicationMap({ profile, onProfileChange }: Props) {
   const [newPerson, setNewPerson] = useState({ name: "", relationship: "" });
   const [newObject, setNewObject] = useState("");
   const [newPhrase, setNewPhrase] = useState("");
+  const [bank, setBank] = useState<AudioItem[]>([]);
+  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+
+  useEffect(() => {
+    listAudio().then(setBank);
+  }, []);
 
   function update(next: Profile) {
     saveProfile(next);
@@ -39,6 +46,42 @@ export function CommunicationMap({ profile, onProfileChange }: Props) {
             </span>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2>Audio bank</h2>
+        {bank.length === 0 && <p className="dim">No banked audio yet — add some from onboarding.</p>}
+        {bank.map((a) => (
+          <div className="card row" key={a.id}>
+            <div>
+              {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
+              <div className="dim">
+                {a.kind} · {a.duration >= 1 ? `${Math.round(a.duration)}s` : "—"}
+              </div>
+              {playing?.id === a.id && <audio controls autoPlay src={playing.url} />}
+            </div>
+            <div>
+              <button
+                className="link"
+                onClick={async () => {
+                  const url = await getAudioUrl(a.id);
+                  if (url) setPlaying({ id: a.id, url });
+                }}
+              >
+                play
+              </button>{" "}
+              <button
+                className="link"
+                onClick={async () => {
+                  await deleteAudio(a.id);
+                  setBank(await listAudio());
+                }}
+              >
+                remove
+              </button>
+            </div>
+          </div>
+        ))}
       </section>
 
       <section>

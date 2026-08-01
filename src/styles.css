@@ -133,3 +133,43 @@ video.mirror { width: 100%; border-radius: 12px; transform: scaleX(-1); border: 
 }
 .card.learned { border-color: #8957e5; }
 .history { margin-top: 12px; }
+
+/* Onboarding wizard */
+.wizard { max-width: 720px; margin: 30px auto; }
+.steps { display: flex; gap: 14px; flex-wrap: wrap; }
+.step { color: var(--dim); font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+.step.current { color: var(--text); border-color: var(--accent); }
+.step.done { color: #7ee787; border-color: #238636; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--dim); max-width: 340px; }
+.field input {
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 10px 14px; font-size: 16px;
+}
+.wizardnav { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+
+/* Phone link */
+.linkrow { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.qrbox { background: #fff; border-radius: 14px; padding: 14px; text-align: center; }
+.qrbox p { color: #333; margin: 6px 0 0; font-size: 13px; }
+.qrbox.inline { display: flex; gap: 16px; align-items: center; align-self: flex-start; }
+.qrbox.inline p { color: #333; max-width: 220px; text-align: left; }
+.linkstatus { font-size: 15px; }
+.joinurl { color: #555 !important; font-size: 11px !important; word-break: break-all; max-width: 240px; font-family: ui-monospace, monospace; }
+.phonepreview, video.phonepreview { width: 320px; border-radius: 12px; border: 1px solid var(--border); }
+.videorow { display: flex; gap: 14px; align-items: flex-start; }
+.videorow .videowrap { width: 300px; }
+.videorow .videowrap video { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+.videolabel {
+  position: absolute; top: 6px; left: 8px; font-size: 11px; color: #fff;
+  background: rgba(0,0,0,0.55); padding: 2px 8px; border-radius: 6px;
+}
+.hiddenvid { display: none; }
+
+/* Phone sender page */
+.phonecam { position: fixed; inset: 0; background: #000; }
+.phonecam video { width: 100%; height: 100%; object-fit: cover; }
+.phonecam-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0; padding: 24px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  display: flex; flex-direction: column; gap: 10px; color: #fff; text-align: center;
+}

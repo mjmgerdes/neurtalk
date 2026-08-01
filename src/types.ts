@@ -30,7 +30,7 @@ export interface Profile {
   objects: ObjectMemory[];
   phrases: string[]; // approved messages that "sound like me"
   corrections: Correction[];
-  voiceSampleUrl?: string; // object URL of recorded onboarding sample (session only)
+  voiceSampleId?: string; // audio-bank id of the banked voice sample
   voiceName?: string; // chosen speechSynthesis voice (Personal Voice on macOS if present)
 }
 
