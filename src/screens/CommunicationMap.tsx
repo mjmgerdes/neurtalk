@@ -5,6 +5,7 @@ import { deleteAudio, getAudioUrl, listAudio, type AudioItem } from "../state/au
 import { SemanticMiner } from "../components/SemanticMiner";
 import type { ExtractedSemantics } from "../llm/gemma";
 import { clearContextLog, loadContextLog, type ContextEntry } from "../state/contextLog";
+import { VoiceSettings } from "../components/VoiceSettings";
 
 interface Props {
   profile: Profile;
@@ -56,6 +57,8 @@ export function CommunicationMap({ profile, onProfileChange }: Props) {
         Everything NeurTalk knows about how {profile.style.preferredName} communicates. Stored
         on-device. Every memory can be removed.
       </p>
+
+      <VoiceSettings />
 
       <section>
         <h2>Style</h2>
