@@ -12,6 +12,7 @@ import {
 } from "../llm/gemma";
 import { speak } from "../speech/voice";
 import { addCorrection } from "../state/profile";
+import { recordSpoken } from "../state/history";
 
 interface Props {
   profile: Profile;
@@ -45,6 +46,8 @@ export function Talk({ profile, onProfileChange }: Props) {
   const [editText, setEditText] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [recentPrompt, setRecentPrompt] = useState("Do you need anything?");
+  const shownAtRef = useRef(0);
+  const editedSlotsRef = useRef(new Set<number>());
 
   const sel = useSelection(method, candidates !== null && editing === null, async (slot, stage) => {
     if (!candidates) return;
@@ -52,6 +55,14 @@ export function Talk({ profile, onProfileChange }: Props) {
       const text = candidates[slot].text;
       await speak(text, profile.voiceName);
       setSpoken((s) => [text, ...s]);
+      recordSpoken({
+        text,
+        method,
+        msToMessage: Date.now() - shownAtRef.current,
+        edited: editedSlotsRef.current.has(slot),
+        urgent: false,
+        at: Date.now(),
+      });
       setCandidates(null);
       setContext(null);
     }
@@ -112,6 +123,8 @@ export function Talk({ profile, onProfileChange }: Props) {
         setUsedFallback(true);
       }
       setCandidates(cands);
+      shownAtRef.current = Date.now();
+      editedSlotsRef.current.clear();
       sel.setStage("choosing");
     } catch (e) {
       console.error(e);
@@ -146,6 +159,7 @@ export function Talk({ profile, onProfileChange }: Props) {
       const updated = [...candidates];
       updated[editing] = { ...updated[editing], text: editText.trim() };
       setCandidates(updated);
+      editedSlotsRef.current.add(editing);
     }
     setEditing(null);
   }
@@ -245,7 +259,14 @@ export function Talk({ profile, onProfileChange }: Props) {
 
       <div className="urgent">
         {URGENT.map((u) => (
-          <button key={u} className="urgentbtn" onClick={() => speak(u, profile.voiceName)}>
+          <button
+            key={u}
+            className="urgentbtn"
+            onClick={() => {
+              speak(u, profile.voiceName);
+              recordSpoken({ text: u, method, msToMessage: 0, edited: false, urgent: true, at: Date.now() });
+            }}
+          >
             {u}
           </button>
         ))}

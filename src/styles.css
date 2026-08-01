@@ -116,5 +116,20 @@ video.mirror { width: 100%; border-radius: 12px; transform: scaleX(-1); border: 
 .urgentbtn:hover { background: var(--urgent); color: #fff; }
 
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; }
+.card.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.addrow { display: flex; gap: 8px; margin-top: 4px; }
+.addrow input {
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 12px; font-size: 14px;
+}
+.addrow button {
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+}
+.report {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; font-size: 13px; line-height: 1.5; white-space: pre-wrap;
+  font-family: ui-monospace, monospace;
+}
 .card.learned { border-color: #8957e5; }
 .history { margin-top: 12px; }

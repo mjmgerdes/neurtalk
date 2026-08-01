@@ -4,8 +4,9 @@ import { loadProfile } from "./state/profile";
 import { Onboarding } from "./screens/Onboarding";
 import { CommunicationMap } from "./screens/CommunicationMap";
 import { Talk } from "./screens/Talk";
+import { History } from "./screens/History";
 
-type Tab = "talk" | "map";
+type Tab = "talk" | "map" | "history";
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(loadProfile());
@@ -23,10 +24,14 @@ export default function App() {
         <button className={tab === "map" ? "active" : ""} onClick={() => setTab("map")}>
           Communication map
         </button>
+        <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>
+          History
+        </button>
         <span className="tagline">Context proposes. The person disposes.</span>
       </nav>
       {tab === "talk" && <Talk profile={profile} onProfileChange={setProfile} />}
-      {tab === "map" && <CommunicationMap profile={profile} />}
+      {tab === "map" && <CommunicationMap profile={profile} onProfileChange={setProfile} />}
+      {tab === "history" && <History profile={profile} />}
     </div>
   );
 }
