@@ -240,6 +240,19 @@ export function Talk({ profile, onProfileChange }: Props) {
 
   return (
     <div className="screen talk">
+      <header className="screen-heading">
+        <div>
+          <p className="eyebrow">Communication workspace</p>
+          <h1>Say what you mean.</h1>
+          <p className="sub">NeurTalk reads the moment, then offers three distinctly yours ways to respond.</p>
+        </div>
+        <div className="interaction-hint" aria-label="Selection instructions">
+          <span>turn to choose</span>
+          <i aria-hidden="true">→</i>
+          <span>nod to speak</span>
+        </div>
+      </header>
+
       <div className="statusbar">
         <span className={`badge ${gemmaOnline ? "on" : "off"}`}>
           {gemmaOnline ? `Gemma local · ${MODEL}` : "Gemma offline · demo candidates"}
@@ -274,61 +287,73 @@ export function Talk({ profile, onProfileChange }: Props) {
         </div>
       )}
 
-      <div className="videorow">
-        <div className="videowrap">
-          <video ref={videoRef} muted playsInline className="mirror" />
-          <div className="posedebug">
-            yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · thresholds ±{TUNING.yawThreshold}/
-            {TUNING.nodThreshold}
+      <section className="capture-panel" aria-label="Scene input">
+        <div className="panel-label"><span>01</span> Live visual context</div>
+        <div className="videorow">
+          <div className="videowrap">
+            <video ref={videoRef} muted playsInline className="mirror" />
+            <div className="posedebug">
+              yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · thresholds ±{TUNING.yawThreshold}/
+              {TUNING.nodThreshold}
+            </div>
+            <div className="videolabel">you · head control</div>
           </div>
-          <div className="videolabel">you (head control)</div>
+          <div className={`videowrap ${phoneLinkStatus() === "connected" ? "" : "hiddenvid"}`}>
+            <video ref={sceneVideoRef} muted playsInline />
+            <div className="videolabel">your view · phone camera</div>
+          </div>
         </div>
-        <div className={`videowrap ${phoneLinkStatus() === "connected" ? "" : "hiddenvid"}`}>
-          <video ref={sceneVideoRef} muted playsInline />
-          <div className="videolabel">your view (phone camera)</div>
-        </div>
-      </div>
 
-      <div className="contextrow">
-        <input
-          value={recentPrompt}
-          onChange={(e) => setRecentPrompt(e.target.value)}
-          placeholder='What was just said to you? e.g. "Do you need anything?"'
-        />
-        <button className="primary" onClick={readScene} disabled={!!busy}>
-          {busy ?? "Read scene → suggest messages"}
-        </button>
-      </div>
-
-      {context && (
-        <div className="chips">
-          {context.people_present.map((p) => (
-            <span className="chip person" key={p}>
-              👤 {p}
-            </span>
-          ))}
-          {context.objects_visible.map((o) => (
-            <span className="chip" key={o}>
-              {o}
-            </span>
-          ))}
-          <span className="chip">{context.location}</span>
-          {usedFallback && <span className="chip warn">demo context (Gemma offline)</span>}
+        <div className="prompt-label">What did you just hear?</div>
+        <div className="contextrow prompt-row">
+          <input
+            aria-label="What was just said to you?"
+            value={recentPrompt}
+            onChange={(e) => setRecentPrompt(e.target.value)}
+            placeholder='e.g. “Do you need anything?”'
+          />
+          <button className="primary" onClick={readScene} disabled={!!busy}>
+            {busy ?? "Read the moment"}
+            {!busy && <span aria-hidden="true">↗</span>}
+          </button>
         </div>
-      )}
+
+        {context && (
+          <div className="chips context-chips">
+            {context.people_present.map((p) => (
+              <span className="chip person" key={p}>
+                <i aria-hidden="true" /> {p}
+              </span>
+            ))}
+            {context.objects_visible.map((o) => (
+              <span className="chip" key={o}>
+                {o}
+              </span>
+            ))}
+            <span className="chip">{context.location}</span>
+            {usedFallback && <span className="chip warn">demo context · Gemma offline</span>}
+          </div>
+        )}
+      </section>
 
       {candidates && sel.stage === "choosing" && (
-        <div className="cards">
-          {candidates.map((c, i) => (
-            <div key={i} className={`candidate ${sel.highlighted === i ? "highlighted" : ""}`}>
-              <div className="intent">{c.intent}</div>
-              <div className="text">{c.text}</div>
-              <button className="link" onClick={() => startEdit(i as SelectionSlot)}>
-                edit
-              </button>
-            </div>
-          ))}
-        </div>
+        <section className="response-panel" aria-label="Suggested responses">
+          <div className="panel-label"><span>02</span> Choose your response</div>
+          <div className="cards">
+            {candidates.map((c, i) => (
+              <div key={i} className={`candidate ${sel.highlighted === i ? "highlighted" : ""}`}>
+                <div className="candidate-topline">
+                  <div className="intent">{c.intent}</div>
+                  <span className="direction">{i === 0 ? "Left" : i === 1 ? "Center" : "Right"}</span>
+                </div>
+                <div className="text">{c.text}</div>
+                <button className="link edit-link" onClick={() => startEdit(i as SelectionSlot)}>
+                  Edit response
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {candidates && sel.stage === "confirming" && (
@@ -358,6 +383,7 @@ export function Talk({ profile, onProfileChange }: Props) {
       {toast && <div className="toast">✦ {toast}</div>}
 
       <div className="urgent">
+        <span className="urgent-label">Urgent phrases</span>
         {URGENT.map((u) => (
           <button
             key={u}
@@ -370,7 +396,7 @@ export function Talk({ profile, onProfileChange }: Props) {
             {u}
           </button>
         ))}
-        <span className="dim">fixed messages — never AI-generated</span>
+        <span className="dim">Fixed messages · never AI-generated</span>
       </div>
 
       {spoken.length > 0 && (
