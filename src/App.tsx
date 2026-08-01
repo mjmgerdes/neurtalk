@@ -10,7 +10,11 @@ import { PhoneCamera } from "./screens/PhoneCamera";
 type Tab = "talk" | "map" | "history";
 
 export default function App() {
-  const [profile, setProfile] = useState<Profile | null>(loadProfile());
+  // Demo-first: every open starts at onboarding. `?resume=1` skips to the
+  // saved profile (handy mid-demo after an accidental reload).
+  const [profile, setProfile] = useState<Profile | null>(() =>
+    new URLSearchParams(location.search).get("resume") ? loadProfile() : null
+  );
   const [tab, setTab] = useState<Tab>("talk");
 
   // Scanned from the QR code: this device is the camera, not the interface.
