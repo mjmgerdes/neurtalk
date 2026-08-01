@@ -11,6 +11,8 @@ import {
   type AudioItem,
 } from "../state/audioBank";
 import { phoneJoinUrl, phoneLinkStatus, phoneStream, startHost, subscribePhoneLink } from "../peer/phoneLink";
+import { SemanticMiner } from "../components/SemanticMiner";
+import type { ExtractedSemantics } from "../llm/gemma";
 
 interface Props {
   onDone: (p: Profile) => void;
@@ -85,6 +87,16 @@ export function Onboarding({ onDone }: Props) {
     refreshBank();
   });
 
+  // Semantics mined from banked audio during onboarding, merged in at finish.
+  const [mined, setMined] = useState<ExtractedSemantics>({ expressions: [], quirks: [], people: [] });
+  function onMined(s: ExtractedSemantics) {
+    setMined((m) => ({
+      expressions: [...new Set([...m.expressions, ...s.expressions])],
+      quirks: [...new Set([...m.quirks, ...s.quirks])],
+      people: [...m.people, ...s.people.filter((p) => !m.people.some((x) => x.name === p.name))],
+    }));
+  }
+
   async function refreshBank() {
     setBank(await listAudio());
   }
@@ -133,10 +145,21 @@ export function Onboarding({ onDone }: Props) {
   });
 
   function finish() {
+    const basePeople = people.length > 0 ? people : DEMO_PROFILE.people;
     const profile: Profile = {
       ...DEMO_PROFILE,
-      style: { ...DEMO_PROFILE.style, preferredName: name.trim() || DEMO_PROFILE.style.preferredName },
-      people: people.length > 0 ? people : DEMO_PROFILE.people,
+      style: {
+        ...DEMO_PROFILE.style,
+        preferredName: name.trim() || DEMO_PROFILE.style.preferredName,
+        quirks: [...new Set([...DEMO_PROFILE.style.quirks, ...mined.quirks])],
+      },
+      people: [
+        ...basePeople,
+        ...mined.people
+          .filter((p) => !basePeople.some((x) => x.name.toLowerCase() === p.name.toLowerCase()))
+          .map((p) => ({ name: p.name, relationship: p.relationship || "—" })),
+      ],
+      expressions: mined.expressions,
       voiceSampleId: voiceId ?? undefined,
     };
     saveProfile(profile);
@@ -234,28 +257,48 @@ export function Onboarding({ onDone }: Props) {
             <h2>Audio bank ({bank.length})</h2>
             {bank.length === 0 && <p className="dim">Nothing banked yet.</p>}
             {bank.map((a) => (
-              <div className="card row" key={a.id}>
-                <div>
-                  {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
-                  <div className="dim">
-                    {a.kind} · {fmtDur(a.duration)} · {new Date(a.addedAt).toLocaleTimeString()}
+              <div className="card" key={a.id}>
+                <div className="row">
+                  <div>
+                    {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
+                    <div className="dim">
+                      {a.kind} · {fmtDur(a.duration)} · {new Date(a.addedAt).toLocaleTimeString()}
+                    </div>
                   </div>
+                  <button
+                    className="link"
+                    onClick={async () => {
+                      await deleteAudio(a.id);
+                      if (a.id === voiceId) {
+                        setVoiceId(null);
+                        setVoiceUrl(null);
+                      }
+                      refreshBank();
+                    }}
+                  >
+                    remove
+                  </button>
                 </div>
-                <button
-                  className="link"
-                  onClick={async () => {
-                    await deleteAudio(a.id);
-                    if (a.id === voiceId) {
-                      setVoiceId(null);
-                      setVoiceUrl(null);
-                    }
-                    refreshBank();
-                  }}
-                >
-                  remove
-                </button>
+                <SemanticMiner item={a} onMined={onMined} />
               </div>
             ))}
+            {(mined.expressions.length > 0 || mined.quirks.length > 0) && (
+              <div className="card learned">
+                <b>Semantic map so far</b>
+                <div className="chips" style={{ marginTop: 8 }}>
+                  {mined.expressions.map((x) => (
+                    <span className="chip learnedchip" key={x}>
+                      ✦ {x}
+                    </span>
+                  ))}
+                  {mined.quirks.map((x) => (
+                    <span className="chip" key={x}>
+                      {x}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
           <div className="wizardnav">
             <button className="big primary" onClick={() => setStep(2)}>

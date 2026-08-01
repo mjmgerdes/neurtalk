@@ -11,6 +11,7 @@ export interface AudioItem {
   mime: string;
   duration: number; // seconds, 0 if unknown
   addedAt: number;
+  transcript?: string; // on-device Whisper transcript, once parsed
 }
 
 const DB = "neurtalk";
@@ -56,6 +57,31 @@ export async function getAudioUrl(id: string): Promise<string | null> {
     const req = tx(db, "readonly").get(id);
     req.onsuccess = () => resolve(req.result ? URL.createObjectURL(req.result.blob) : null);
     req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getAudioBlob(id: string): Promise<Blob | null> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, "readonly").get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function updateAudioMeta(id: string, patch: Partial<AudioItem>): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const store = tx(db, "readwrite");
+    const get = store.get(id);
+    get.onsuccess = () => {
+      if (!get.result) return resolve();
+      const next = { ...get.result, meta: { ...get.result.meta, ...patch } };
+      const put = store.put(next);
+      put.onsuccess = () => resolve();
+      put.onerror = () => reject(put.error);
+    };
+    get.onerror = () => reject(get.error);
   });
 }
 

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import type { Profile } from "../types";
 import { saveProfile } from "../state/profile";
 import { deleteAudio, getAudioUrl, listAudio, type AudioItem } from "../state/audioBank";
+import { SemanticMiner } from "../components/SemanticMiner";
+import type { ExtractedSemantics } from "../llm/gemma";
+import { clearContextLog, loadContextLog, type ContextEntry } from "../state/contextLog";
 
 interface Props {
   profile: Profile;
@@ -19,13 +22,31 @@ export function CommunicationMap({ profile, onProfileChange }: Props) {
   const [bank, setBank] = useState<AudioItem[]>([]);
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
 
+  const [ctxLog, setCtxLog] = useState<ContextEntry[]>([]);
+
   useEffect(() => {
     listAudio().then(setBank);
+    setCtxLog(loadContextLog());
   }, []);
 
   function update(next: Profile) {
     saveProfile(next);
     onProfileChange(next);
+  }
+
+  // Semantics mined post-onboarding merge straight into the saved profile.
+  function onMined(s: ExtractedSemantics) {
+    update({
+      ...profile,
+      expressions: [...new Set([...profile.expressions, ...s.expressions])],
+      style: { ...profile.style, quirks: [...new Set([...profile.style.quirks, ...s.quirks])] },
+      people: [
+        ...profile.people,
+        ...s.people
+          .filter((p) => !profile.people.some((x) => x.name.toLowerCase() === p.name.toLowerCase()))
+          .map((p) => ({ name: p.name, relationship: p.relationship || "—" })),
+      ],
+    });
   }
 
   return (
@@ -49,37 +70,92 @@ export function CommunicationMap({ profile, onProfileChange }: Props) {
       </section>
 
       <section>
+        <h2>Semantic mapping — your expressions</h2>
+        {profile.expressions.length === 0 && (
+          <p className="dim">
+            None mined yet — transcribe &amp; map audio below and Gemma extracts the phrases that are
+            distinctly yours. "___" is a slot NeurTalk fills from what it sees.
+          </p>
+        )}
+        <div className="chips">
+          {profile.expressions.map((x) => (
+            <span className="chip learnedchip" key={x}>
+              ✦ {x}{" "}
+              <button
+                className="chipx"
+                onClick={() =>
+                  update({ ...profile, expressions: profile.expressions.filter((e) => e !== x) })
+                }
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section>
         <h2>Audio bank</h2>
         {bank.length === 0 && <p className="dim">No banked audio yet — add some from onboarding.</p>}
         {bank.map((a) => (
-          <div className="card row" key={a.id}>
-            <div>
-              {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
-              <div className="dim">
-                {a.kind} · {a.duration >= 1 ? `${Math.round(a.duration)}s` : "—"}
+          <div className="card" key={a.id}>
+            <div className="row">
+              <div>
+                {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
+                <div className="dim">
+                  {a.kind} · {a.duration >= 1 ? `${Math.round(a.duration)}s` : "—"}
+                </div>
+                {playing?.id === a.id && <audio controls autoPlay src={playing.url} />}
               </div>
-              {playing?.id === a.id && <audio controls autoPlay src={playing.url} />}
+              <div>
+                <button
+                  className="link"
+                  onClick={async () => {
+                    const url = await getAudioUrl(a.id);
+                    if (url) setPlaying({ id: a.id, url });
+                  }}
+                >
+                  play
+                </button>{" "}
+                <button
+                  className="link"
+                  onClick={async () => {
+                    await deleteAudio(a.id);
+                    setBank(await listAudio());
+                  }}
+                >
+                  remove
+                </button>
+              </div>
             </div>
-            <div>
-              <button
-                className="link"
-                onClick={async () => {
-                  const url = await getAudioUrl(a.id);
-                  if (url) setPlaying({ id: a.id, url });
-                }}
-              >
-                play
-              </button>{" "}
-              <button
-                className="link"
-                onClick={async () => {
-                  await deleteAudio(a.id);
-                  setBank(await listAudio());
-                }}
-              >
-                remove
-              </button>
+            <SemanticMiner item={a} onMined={onMined} />
+          </div>
+        ))}
+      </section>
+
+      <section>
+        <h2>
+          Visual context log{" "}
+          {ctxLog.length > 0 && (
+            <button
+              className="link"
+              onClick={() => {
+                clearContextLog();
+                setCtxLog([]);
+              }}
+            >
+              clear
+            </button>
+          )}
+        </h2>
+        {ctxLog.length === 0 && <p className="dim">No scenes read yet.</p>}
+        {ctxLog.slice(0, 8).map((e, i) => (
+          <div className="card" key={i}>
+            <div className="dim">
+              {new Date(e.at).toLocaleTimeString()} · via {e.source}
             </div>
+            👤 {e.ctx.people_present.join(", ") || "no one"} · {e.ctx.objects_visible.join(", ") || "no objects"} ·{" "}
+            {e.ctx.location} — {e.ctx.activity}
           </div>
         ))}
       </section>

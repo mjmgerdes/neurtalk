@@ -22,13 +22,18 @@ export const DEMO_PROFILE: Profile = {
     "Give me one second, I'm still thinking.",
     "That's not what I meant.",
   ],
+  expressions: [],
   corrections: [],
 };
 
 export function loadProfile(): Profile | null {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Profile) : null;
+    if (!raw) return null;
+    // Migrate profiles saved before `expressions` existed.
+    const parsed = JSON.parse(raw) as Profile;
+    parsed.expressions ??= [];
+    return parsed;
   } catch {
     return null;
   }

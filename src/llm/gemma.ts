@@ -15,10 +15,11 @@ async function chat(messages: object[], expectJson = true): Promise<string> {
       messages,
       stream: false,
       ...(expectJson ? { format: "json" } : {}),
-      // keep_alive keeps the model resident between calls; num_predict caps
-      // generation so a wandering model can't stall the live demo.
+      // keep_alive keeps the model resident between calls. num_predict must
+      // leave room for gemma4's thinking tokens as well as the JSON answer —
+      // a tight cap returns empty content.
       keep_alive: "60m",
-      options: { temperature: 0.7, num_predict: 300 },
+      options: { temperature: 0.7, num_predict: 1200 },
     }),
   });
   if (!res.ok) throw new Error(`Ollama ${res.status}`);
@@ -58,6 +59,41 @@ export async function generateCandidates(
   const cands: Candidate[] = (parsed.candidates ?? []).slice(0, 3);
   if (cands.length < 3) throw new Error("model returned fewer than 3 candidates");
   return cands;
+}
+
+export interface ExtractedSemantics {
+  expressions: string[];
+  quirks: string[];
+  people: { name: string; relationship: string }[];
+}
+
+/**
+ * Semantic parsing pass: a transcript of the person's real speech -> the
+ * building blocks of their semantic map. Expressions are generalized into
+ * reusable templates ("I want that damn ___") so the candidate generator can
+ * re-fill them from the current scene.
+ */
+export async function extractSemantics(transcript: string): Promise<ExtractedSemantics> {
+  const content = await chat([
+    {
+      role: "user",
+      content: `You are building the semantic communication map of a person from a transcript of their natural speech. Extract:
+1. "expressions": characteristic phrases they actually use, generalized into reusable templates by replacing specific objects/names with "___" where sensible (e.g. "I want that damn ___", "Hey ___, come here a sec"). Only phrases that feel distinctive of THIS speaker, max 6.
+2. "quirks": short style habits (e.g. "swears casually", "starts requests with Hey", "short direct sentences"), max 5.
+3. "people": people they mention, with relationship if stated or clearly implied.
+
+TRANSCRIPT:
+"""${transcript}"""
+
+Output strict JSON: {"expressions": ["..."], "quirks": ["..."], "people": [{"name": "...", "relationship": "..."}]}`,
+    },
+  ]);
+  const parsed = JSON.parse(content);
+  return {
+    expressions: parsed.expressions ?? [],
+    quirks: parsed.quirks ?? [],
+    people: parsed.people ?? [],
+  };
 }
 
 // Offline fallback so the interaction demo still runs if local inference is down.

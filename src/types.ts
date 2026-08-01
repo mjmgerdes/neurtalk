@@ -29,6 +29,7 @@ export interface Profile {
   people: Person[];
   objects: ObjectMemory[];
   phrases: string[]; // approved messages that "sound like me"
+  expressions: string[]; // characteristic templates mined from their real speech, e.g. 'I want that damn ___'
   corrections: Correction[];
   voiceSampleId?: string; // audio-bank id of the banked voice sample
   voiceName?: string; // chosen speechSynthesis voice (Personal Voice on macOS if present)

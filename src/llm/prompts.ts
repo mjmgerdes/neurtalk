@@ -23,6 +23,13 @@ THEIR IDENTITY (use their voice, not a generic assistant voice):
 - Tone: ${profile.style.tone}
 - Habits: ${profile.style.quirks.join("; ")}
 - Approved phrases that sound like them: ${profile.phrases.map((p) => `"${p}"`).join(", ")}
+${
+  profile.expressions.length > 0
+    ? `- Characteristic expressions mined from their real speech (templates; "___" is a slot): ${profile.expressions
+        .map((e) => `"${e}"`)
+        .join(", ")}`
+    : ""
+}
 ${corrections ? `- Learned preferences:\n${corrections}` : ""}
 
 PEOPLE THEY KNOW:
@@ -37,6 +44,7 @@ ${recentPrompt ? `Someone just said to them: "${recentPrompt}"` : ""}
 
 RULES:
 - The 3 candidates must represent meaningfully DIFFERENT intents (e.g. a request, an alternative request, a decline/social reply) — never three paraphrases of one intent.
+- STRONGLY prefer reusing their characteristic expressions when one fits, filling the "___" slot from the current scene (e.g. expression "I want that damn ___" + a visible blue cup -> "I want that damn blue cup"). Their own words beat generic phrasing.
 - If a known person is plausibly in the scene, address them the way ${profile.style.preferredName} would.
 - Short. Spoken register. First person. No emojis, no stage directions.
 - Output strict JSON: {"candidates": [{"text": "...", "intent": "..."}, {"text": "...", "intent": "..."}, {"text": "...", "intent": "..."}]}`;

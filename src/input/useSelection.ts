@@ -131,5 +131,8 @@ export function useSelection(
     setStage,
     cancel,
     feedPose: (p: HeadPose) => onPoseRef.current(p),
+    // External drivers (e.g. the phone/glasses tilt input) reuse the same core.
+    highlightExternal: (s: SelectionSlot) => setHighlighted(s),
+    confirmExternal: () => confirm(),
   };
 }

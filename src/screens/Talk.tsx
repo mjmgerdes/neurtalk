@@ -13,8 +13,17 @@ import {
 import { speak } from "../speech/voice";
 import { addCorrection } from "../state/profile";
 import { recordSpoken } from "../state/history";
+import { recordContext } from "../state/contextLog";
 import QRCode from "qrcode";
-import { phoneJoinUrl, phoneLinkStatus, phoneStream, startHost, subscribePhoneLink } from "../peer/phoneLink";
+import {
+  onPhoneMessage,
+  phoneJoinUrl,
+  phoneLinkStatus,
+  phoneStream,
+  sendToPhone,
+  startHost,
+  subscribePhoneLink,
+} from "../peer/phoneLink";
 
 interface Props {
   profile: Profile;
@@ -59,6 +68,7 @@ export function Talk({ profile, onProfileChange }: Props) {
     if (!candidates) return;
     if (stage === "confirming") {
       const text = candidates[slot].text;
+      sendToPhone({ type: "spoken", text });
       await speak(text, profile.voiceName);
       setSpoken((s) => [text, ...s]);
       recordSpoken({
@@ -97,8 +107,31 @@ export function Talk({ profile, onProfileChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Phone-as-glasses link: when a phone is streaming, its camera is the scene.
+  // Phone-as-glasses link: when a phone is streaming, its camera is the scene
+  // and its tilt/nod drives the same selection core as head tracking.
   useEffect(() => subscribePhoneLink(() => linkTick((n) => n + 1)), []);
+  useEffect(
+    () =>
+      onPhoneMessage((m) => {
+        if (m.type === "highlight") sel.highlightExternal(m.slot as SelectionSlot);
+        if (m.type === "confirm") sel.confirmExternal();
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  // Mirror HUD state to the phone.
+  useEffect(() => {
+    if (candidates) sendToPhone({ type: "candidates", candidates, highlighted: sel.highlighted });
+    else sendToPhone({ type: "clear" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates]);
+  useEffect(() => {
+    sendToPhone({ type: "highlight", slot: sel.highlighted });
+  }, [sel.highlighted]);
+  useEffect(() => {
+    sendToPhone({ type: "stage", stage: sel.stage, slot: sel.highlighted });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel.stage]);
   useEffect(() => {
     const s = phoneStream();
     if (sceneVideoRef.current && s && sceneVideoRef.current.srcObject !== s) {
@@ -137,12 +170,18 @@ export function Talk({ profile, onProfileChange }: Props) {
         const frame = captureFrame();
         ctx = frame ? await describeScene(frame) : FALLBACK_SCENE;
         setContext(ctx);
+        recordContext({
+          ctx,
+          source: phoneLinkStatus() === "connected" ? "phone" : "laptop",
+          at: Date.now(),
+        });
         setBusy("Generating what you might want to say…");
         cands = await generateCandidates(profile, ctx, recentPrompt || undefined);
         setUsedFallback(false);
       } else {
         ctx = FALLBACK_SCENE;
         setContext(ctx);
+        recordContext({ ctx, source: "demo", at: Date.now() });
         cands = FALLBACK_CANDIDATES;
         setUsedFallback(true);
       }

@@ -14,15 +14,15 @@
 **0:00 — Problem (say it plainly)**
 "ALS takes your speech and your hands, but not what you want to say. Today's tools make you rebuild every sentence — about 40 selections through whatever movement you have left. NeurTalk flips that: the environment supplies context, my personal bank supplies identity, and I supply only intent."
 
-**0:20 — Show the bank** (Communication map tab)
-"This is everything it knows about me — my people, my objects, how I phrase things. Every memory is editable and deletable. It learns from my choices, not from listening."
+**0:20 — Mine my semantics** (Communication map tab, or onboarding step 2)
+Upload the sample MP3 → "transcribe & map" (Whisper, on-device) → transcript appears → "Extract semantics with Gemma" → chips appear: ✦ "I want that damn ___", quirks, people. "Gemma just learned how *I* talk — not how an assistant talks. Every memory here is editable and deletable, and there's a log of every piece of context I've contributed."
 
 **0:40 — The moment** (Talk tab)
 "Now imagine my speech and hands are gone." If not already linked from onboarding, hit **Connect phone (glasses)**, scan the QR, tap Start streaming — your phone's view appears on screen ("in the real product this is smart glasses"). Point the phone at the staged scene (person + mug). Type/keep "Do you need anything?" → **Read scene**.
 While it thinks: "A camera frame is going to Gemma running ON this laptop — nothing leaves the device. It reads the scene, crosses it with my bank, and proposes three genuinely different intents."
 
-**1:10 — Select with your head**
-Turn head → highlight moves. Nod → confirm screen. "Nothing is spoken until I deliberately confirm — context proposes, the person disposes." Nod again → it speaks.
+**1:10 — Select through the glasses**
+Hold the phone up in landscape — the three options float over the live view like an AR HUD, and one of them reuses your mined expression filled from the scene ("I want that damn blue cup"). Tilt left/right → highlight moves on both screens. Nod the phone → confirm state. "Nothing is spoken until I deliberately confirm — context proposes, the person disposes." Nod again → the laptop speaks it in the banked voice. (Laptop head-tracking works as the alternate access method if the room's too chaotic.)
 
 **1:30 — Learning**
 Edit a candidate: "bring" → "grab". Point at the toast: "Preference learned. Next generation will phrase it my way."

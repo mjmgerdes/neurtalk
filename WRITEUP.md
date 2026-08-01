@@ -16,7 +16,7 @@ NeurTalk inverts the workload. The environment supplies context. A personal comm
 
 ## What I built (solo, in one day)
 
-A working browser prototype with the full loop:
+A working browser prototype with the full loop (voice + audio context + semantic mining onboard; a phone stands in for smart glasses, streaming its camera to the interface over WebRTC and rendering the three candidates as an AR-style HUD over the wearer's view — tilting the phone selects, a nod confirms):
 
 1. **Preserve** — an onboarding flow records a natural voice sample and seeds a personal communication bank: people (Sarah, daughter), objects (the blue mug), phrasing habits ("says grab, not bring"), and approved phrases. Stored entirely on-device; every memory is reviewable, editable, and deletable in a transparent Communication Map — no opaque "how well we know you" score.
 2. **See** — a camera frame goes to Gemma 4 running locally. It returns structured JSON: people present, objects visible, location, activity. Raw imagery is never stored.
@@ -28,9 +28,11 @@ A Communication History screen records (deletable, on-device) what was spoken, b
 
 ## How Gemma 4 is used — and why it must be on-device
 
-Gemma 4 is the reasoning core, not a garnish. Two distinct inference passes:
+Gemma 4 is the reasoning core, not a garnish. Three distinct inference passes:
 
-- **Vision pass** (`src/llm/gemma.ts → describeScene`): multimodal Gemma 4 converts a camera frame into structured scene JSON. Strict-JSON output via Ollama's format constraint.
+- **Semantic mining pass** (`extractSemantics`): the user's real speech — uploaded MP3s/videos or recordings, transcribed on-device by Whisper running in the browser — goes to Gemma 4, which extracts characteristic expression *templates* ("I want that damn ___"), style quirks, and people. Those templates are re-filled from the live scene, so a mined "I want that damn ___" plus a visible blue cup becomes the candidate "I want that damn blue cup."
+
+- **Vision pass** (`src/llm/gemma.ts → describeScene`): multimodal Gemma 4 converts a camera frame — from the phone-as-glasses stream when connected — into structured scene JSON. Strict-JSON output via Ollama's format constraint.
 - **Language pass** (`generateCandidates`): Gemma 4 receives the identity profile, relationship graph, approved phrases, correction history, scene JSON, and what was just said to the user — and must return three intent-distinct candidates in the user's own register.
 
 All inference runs through Ollama on localhost. This is not a deployment preference; it is the product. A continuous camera feed of someone's home, family, and caregivers — pointed at a person with a progressive illness — is among the most sensitive data streams imaginable. It cannot go to a cloud API. On-device Gemma is what makes this product *possible*, not just cheaper.
