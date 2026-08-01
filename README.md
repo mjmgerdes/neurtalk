@@ -72,7 +72,7 @@ Head tracking also runs fully on-device: **MediaPipe Face Landmarker** (WASM/Web
 
 ```bash
 # 1. Local Gemma via Ollama
-ollama pull gemma3:4b        # any local multimodal Gemma build works
+ollama pull gemma4           # primary; gemma3:4b also works as a fast fallback
 ollama serve                 # if not already running
 
 # 2. App

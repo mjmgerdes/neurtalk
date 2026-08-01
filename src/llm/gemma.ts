@@ -4,7 +4,7 @@ import { candidatesPrompt, scenePrompt } from "./prompts";
 // All inference is local: Ollama serves Gemma on localhost. No cloud calls.
 const OLLAMA_URL = "http://localhost:11434";
 // Overridable at the event depending on which Gemma build is available locally.
-export const MODEL = localStorage.getItem("neurtalk.model") ?? "gemma3:4b";
+export const MODEL = localStorage.getItem("neurtalk.model") ?? "gemma4";
 
 async function chat(messages: object[], expectJson = true): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
@@ -15,7 +15,10 @@ async function chat(messages: object[], expectJson = true): Promise<string> {
       messages,
       stream: false,
       ...(expectJson ? { format: "json" } : {}),
-      options: { temperature: 0.7 },
+      // keep_alive keeps the model resident between calls; num_predict caps
+      // generation so a wandering model can't stall the live demo.
+      keep_alive: "60m",
+      options: { temperature: 0.7, num_predict: 300 },
     }),
   });
   if (!res.ok) throw new Error(`Ollama ${res.status}`);
