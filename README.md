@@ -70,6 +70,8 @@ Head tracking also runs fully on-device: **MediaPipe Face Landmarker** (WASM/Web
 
 ## Running it
 
+**Hosted demo:** https://mjmgerdes.github.io/neurtalk/ — head tracking and the full UI run in-browser; the hosted page uses labeled demo candidates since your browser can't reach a local Ollama from a hosted origin by default. Run locally for full Gemma inference:
+
 ```bash
 # 1. Local Gemma via Ollama
 ollama pull gemma4           # primary; gemma3:4b also works as a fast fallback

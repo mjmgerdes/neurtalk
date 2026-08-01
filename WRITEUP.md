@@ -66,5 +66,5 @@ Decision-support and accessibility only: no diagnosis, no treatment, no clinical
 ## Links
 
 - Public repo: https://github.com/mjmgerdes/neurtalk
-- Live demo: [Vercel URL — runs in labeled fallback mode without local Ollama; clone + `ollama pull gemma4` for full local inference]
+- Live demo: https://mjmgerdes.github.io/neurtalk/ — head-tracking selection runs fully in-browser; without a local Ollama it uses clearly-labeled fallback candidates. Clone + `ollama pull gemma4` for full local inference.
 - Demo video: [optional]
