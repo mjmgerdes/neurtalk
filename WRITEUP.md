@@ -28,12 +28,13 @@ A Communication History screen records (deletable, on-device) what was spoken, b
 
 ## How Gemma 4 is used — and why it must be on-device
 
-Gemma 4 is the reasoning core, not a garnish. Three distinct inference passes:
+Gemma 4 is the reasoning core, not a garnish. Four distinct inference passes, all through Ollama on localhost:
 
 - **Semantic mining pass** (`extractSemantics`): the user's real speech — uploaded MP3s/videos or recordings, transcribed on-device by Whisper running in the browser — goes to Gemma 4, which extracts characteristic expression *templates* ("I want that damn ___"), style quirks, and people. Those templates are re-filled from the live scene, so a mined "I want that damn ___" plus a visible blue cup becomes the candidate "I want that damn blue cup."
 
 - **Vision pass** (`src/llm/gemma.ts → describeScene`): multimodal Gemma 4 converts a camera frame — from the phone-as-glasses stream when connected — into structured scene JSON. Strict-JSON output via Ollama's format constraint.
-- **Language pass** (`generateCandidates`): Gemma 4 receives the identity profile, relationship graph, approved phrases, correction history, scene JSON, and what was just said to the user — and must return three intent-distinct candidates in the user's own register.
+- **Language pass** (`generateCandidates`): Gemma 4 receives the identity profile, relationship graph, approved phrases, mined expression templates, correction history, scene JSON, and what was just said to the user — and must return three intent-distinct candidates in the user's own register.
+- **Preference-learning pass** (`analyzeCorrection`): when the user edits a proposed message, Gemma 4 names the preference in auditable form ('"grab" over "bring"') and mines any reusable phrasing template the edit reveals — both feed subsequent generation.
 
 All inference runs through Ollama on localhost. This is not a deployment preference; it is the product. A continuous camera feed of someone's home, family, and caregivers — pointed at a person with a progressive illness — is among the most sensitive data streams imaginable. It cannot go to a cloud API. On-device Gemma is what makes this product *possible*, not just cheaper.
 
@@ -59,7 +60,7 @@ The personalization is prompt-engineered rather than fine-tuned by design: the "
 
 ## Honest limitations
 
-The "banked voice" currently uses the OS speech voice — on macOS this can be a Personal Voice trained fully on-device, which is the honest, privacy-preserving version of voice cloning; a 15-second sample cannot truthfully promise a permanent clone. The onboarding recording seeds a demo profile rather than being mined automatically. Eye-gaze and glasses form factors are represented by the access-method abstraction, not implemented. The demo profile is synthetic; no real patient data anywhere.
+Voice output is a swappable component with a best-available chain: an ElevenLabs instant clone built from the banked onboarding sample (optional, and the one disclosed cloud component — Gemma reasoning stays fully local), then macOS Personal Voice (trained fully on-device), then a system voice. A 15-second sample cannot truthfully promise a perfect permanent clone, and the writeup doesn't claim one. The onboarding recording seeds a demo profile rather than being mined automatically. Eye-gaze and glasses form factors are represented by the access-method abstraction, not implemented. The demo profile is synthetic; no real patient data anywhere.
 
 ## Scope compliance
 

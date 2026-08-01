@@ -58,11 +58,12 @@ The selection layer is deliberately **decoupled from any one input**. Head pose,
 
 ## How Gemma is used (and why it must run on-device)
 
-Gemma is the reasoning core, not a garnish:
+Gemma is the reasoning core, not a garnish — four distinct inference passes:
 
-1. **Vision pass** (`src/llm/gemma.ts → describeScene`): a camera frame goes to local Gemma, which returns structured JSON — people present, objects visible, location, activity. Raw imagery is never stored.
-2. **Language pass** (`generateCandidates`): Gemma receives the personal bank (identity, relationship graph, approved phrases, learned corrections) plus the scene JSON, and must return exactly 3 candidates with *meaningfully different intents* — a request, an alternative, a decline — never three paraphrases.
-3. **Personalization loop**: every user edit becomes a correction ("grab" over "bring") injected into subsequent prompts.
+1. **Semantic mining** (`extractSemantics`): the user's real speech (uploads/recordings, transcribed on-device by in-browser Whisper) goes to Gemma, which extracts characteristic expression templates ("I want that damn ___"), style quirks, and people.
+2. **Vision pass** (`describeScene`): a camera frame — from the phone-as-glasses stream when connected — returns structured JSON: people present, objects visible, location, activity. Raw imagery is never stored.
+3. **Candidate generation** (`generateCandidates`): Gemma crosses the personal bank with the scene and returns exactly 3 *intent-distinct* candidates, re-filling mined templates from what it sees: "I want that damn ___" + a visible blue cup → "I want that damn blue cup".
+4. **Preference learning** (`analyzeCorrection`): each user edit is analyzed by Gemma into an auditable preference ('"grab" over "bring"') and, when one exists, a new reusable expression template.
 
 All inference runs through **Ollama on `localhost`** — a continuous camera feed of someone's home, family, and caregivers is among the most sensitive data streams imaginable. It cannot go to a cloud API. This is exactly the workload on-device Gemma exists for.
 
@@ -105,7 +106,7 @@ npm run dev                  # open http://localhost:5173, allow camera + mic
 Honesty section for judges:
 
 - ✅ Real: local Gemma scene understanding + candidate generation, in-browser head-pose selection with calibration, correction learning loop, switch-scanning and keyboard access methods.
-- 🟡 Simulated: "banked voice" playback uses the OS speech voice (on macOS this can be a **Personal Voice** trained on-device — the honest, privacy-preserving version of voice cloning). The onboarding recording seeds a demo profile rather than being mined by a model.
+- 🟡 Partly real: the banked voice speaks through a best-available chain — ElevenLabs instant clone of the onboarding sample (optional; the one disclosed cloud component), macOS **Personal Voice** (trained on-device), or a system voice. Whisper transcription and Gemma semantic mining of uploaded audio are real; seed people/objects are demo data unless you add your own.
 - 🔮 Product path: smart-glasses form factor, eye-gaze adapter, ongoing voice banking, SLP-shareable communication access reports.
 
 ## Repo map

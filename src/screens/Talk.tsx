@@ -3,6 +3,7 @@ import type { AccessMethod, Candidate, Profile, SceneContext, SelectionSlot } fr
 import { HeadTracker, type HeadPose } from "../input/headTracker";
 import { useSelection, TUNING } from "../input/useSelection";
 import {
+  analyzeCorrection,
   describeScene,
   generateCandidates,
   ollamaAvailable,
@@ -11,7 +12,7 @@ import {
   MODEL,
 } from "../llm/gemma";
 import { speak } from "../speech/voice";
-import { addCorrection } from "../state/profile";
+import { addCorrection, saveProfile } from "../state/profile";
 import { recordSpoken } from "../state/history";
 import { recordContext } from "../state/contextLog";
 import QRCode from "qrcode";
@@ -205,26 +206,36 @@ export function Talk({ profile, onProfileChange }: Props) {
     setEditText(candidates[slot].text);
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (editing === null || !candidates) return;
     const rejected = candidates[editing].text;
-    if (editText.trim() && editText.trim() !== rejected) {
-      const learned = diffLearned(rejected, editText.trim());
-      const next = addCorrection(profile, {
-        rejected,
-        chosen: editText.trim(),
-        learned,
-        at: Date.now(),
-      });
-      onProfileChange(next);
-      setToast(`Preference learned: ${learned}`);
-      setTimeout(() => setToast(null), 3500);
-      const updated = [...candidates];
-      updated[editing] = { ...updated[editing], text: editText.trim() };
-      setCandidates(updated);
-      editedSlotsRef.current.add(editing);
-    }
+    const chosen = editText.trim();
+    const slot = editing;
     setEditing(null);
+    if (!chosen || chosen === rejected) return;
+
+    const updated = [...candidates];
+    updated[slot] = { ...updated[slot], text: chosen };
+    setCandidates(updated);
+    editedSlotsRef.current.add(slot);
+
+    // Gemma names the preference (and mines any reusable template); the
+    // word-diff heuristic is only the offline fallback.
+    let learned = diffLearned(rejected, chosen);
+    let expression: string | null = null;
+    try {
+      if (await ollamaAvailable()) ({ learned, expression } = await analyzeCorrection(rejected, chosen));
+    } catch (e) {
+      console.error("correction analysis fell back to heuristic", e);
+    }
+    let next = addCorrection(profile, { rejected, chosen, learned, at: Date.now() });
+    if (expression && !next.expressions.includes(expression)) {
+      next = { ...next, expressions: [...next.expressions, expression] };
+      saveProfile(next);
+    }
+    onProfileChange(next);
+    setToast(`Preference learned: ${learned}${expression ? ` · new expression: "${expression}"` : ""}`);
+    setTimeout(() => setToast(null), 4500);
   }
 
   return (

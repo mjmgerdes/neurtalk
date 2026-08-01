@@ -96,6 +96,33 @@ Output strict JSON: {"expressions": ["..."], "quirks": ["..."], "people": [{"nam
   };
 }
 
+/**
+ * Preference-learning pass: when the user edits a proposed message, Gemma
+ * names the preference (so it's human-auditable in the map) and, when the
+ * edit reveals a reusable pattern, mines it as an expression template.
+ */
+export async function analyzeCorrection(
+  rejected: string,
+  chosen: string
+): Promise<{ learned: string; expression: string | null }> {
+  const content = await chat([
+    {
+      role: "user",
+      content: `A user of an assistive communication device edited a message the system proposed for them. This edit is a signal about how THEY prefer to phrase things.
+
+Proposed: "${rejected}"
+Their edit: "${chosen}"
+
+1. "learned": name the preference in under 8 words, quoting the key words (e.g. '"grab" over "bring"', 'drops polite framing', 'shorter and blunter').
+2. "expression": if the edit reveals a reusable personal phrasing pattern, give it as a template with "___" for the changeable slot (e.g. "I want that damn ___"); otherwise null.
+
+Output strict JSON: {"learned": "...", "expression": "..." or null}`,
+    },
+  ]);
+  const parsed = JSON.parse(content);
+  return { learned: parsed.learned ?? "phrasing preference", expression: parsed.expression ?? null };
+}
+
 // Offline fallback so the interaction demo still runs if local inference is down.
 // Clearly labeled in the UI as "demo candidates" when used.
 export const FALLBACK_SCENE: SceneContext = {
