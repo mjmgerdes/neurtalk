@@ -30,12 +30,12 @@ export function SemanticMiner({ item, onMined }: Props) {
       setMsg(null);
     } catch (e) {
       console.error(e);
-      setMsg("On-device transcription failed — you can type/paste the transcript below.");
+      setMsg("Transcription didn’t work. You can type or paste the words below.");
     }
   }
 
   async function extract() {
-    setMsg("Gemma is parsing your speech patterns…");
+    setMsg("Finding your expressions…");
     try {
       const s = await extractSemantics(transcript);
       setSem(s);
@@ -44,63 +44,70 @@ export function SemanticMiner({ item, onMined }: Props) {
       onMined(s, transcript);
     } catch (e) {
       console.error(e);
-      setMsg("Gemma unavailable — is Ollama running?");
+      setMsg("The on-device model isn’t running. Start Ollama and try again.");
     }
   }
 
   if (!open && !item.transcript)
     return (
       <button className="link" onClick={transcribe}>
-        transcribe &amp; map
+        Transcribe and find expressions
       </button>
     );
   if (!open)
     return (
       <button className="link" onClick={() => setOpen(true)}>
-        view transcript
+        View transcript
       </button>
     );
 
   return (
     <div className="miner">
-      {msg && <p className="dim">{msg}</p>}
+      {msg && (
+        <p className="hint" role="status">
+          {msg}
+        </p>
+      )}
       <textarea
         rows={3}
-        placeholder="Transcript appears here — editable before mapping"
+        aria-label={`Transcript of ${item.label}`}
+        placeholder="The transcript appears here. You can correct it first."
         value={transcript}
         onChange={(e) => setTranscript(e.target.value)}
       />
-      <div className="minerrow">
+      <div className="actions">
         <button className="primary" disabled={!transcript.trim()} onClick={extract}>
-          Extract semantics with Gemma
+          Find expressions
         </button>
         {!item.transcript && (
           <button className="link" onClick={transcribe}>
-            re-transcribe
+            Transcribe again
           </button>
         )}
         <button className="link" onClick={() => setOpen(false)}>
-          close
+          Close
         </button>
       </div>
       {sem && (
-        <div className="minerout">
-          {sem.expressions.map((x) => (
-            <span className="chip learnedchip" key={x}>
-              ✦ {x}
-            </span>
-          ))}
-          {sem.quirks.map((x) => (
-            <span className="chip" key={x}>
-              {x}
-            </span>
-          ))}
-          {sem.people.map((p) => (
-            <span className="chip person" key={p.name}>
-              👤 {p.name} ({p.relationship})
-            </span>
-          ))}
-          <p className="dim">✓ Added to your semantic map</p>
+        <div className="miner-result">
+          <ul className="tags">
+            {sem.expressions.map((x) => (
+              <li className="tag is-accent" key={x}>
+                {x}
+              </li>
+            ))}
+            {sem.quirks.map((x) => (
+              <li className="tag" key={x}>
+                {x}
+              </li>
+            ))}
+            {sem.people.map((p) => (
+              <li className="tag" key={p.name}>
+                {p.name} ({p.relationship})
+              </li>
+            ))}
+          </ul>
+          <p className="hint">Added to My Map.</p>
         </div>
       )}
     </div>

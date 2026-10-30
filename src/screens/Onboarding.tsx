@@ -12,6 +12,7 @@ import {
 } from "../state/audioBank";
 import { phoneJoinUrl, phoneLinkStatus, phoneStream, startHost, subscribePhoneLink } from "../peer/phoneLink";
 import { SemanticMiner } from "../components/SemanticMiner";
+import { BrandMark, Icon, StatusDot } from "../components/Icon";
 import type { ExtractedSemantics } from "../llm/gemma";
 
 interface Props {
@@ -169,30 +170,24 @@ export function Onboarding({ onDone }: Props) {
   const linkStatus = phoneLinkStatus();
 
   return (
-    <div className="screen onboarding wizard">
-      <div className="onboarding-brand">
-        <span className="brand-mark" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
-        <span>
-          <strong className="brand">NeurTalk</strong>
-          <small>Your voice, kept yours.</small>
-        </span>
-      </div>
-      <div className="steps">
+    <div className="onboarding">
+      <span className="brand">
+        <BrandMark />
+        NeurTalk
+      </span>
+      <ol className="steps" aria-label="Setup progress">
         {STEPS.map((s, i) => (
-          <span
+          <li
             key={s}
-            className={`step ${i === step ? "current" : i < step ? "done" : ""}`}
+            className={`step${i === step ? " is-current" : i < step ? " is-done" : ""}`}
             aria-current={i === step ? "step" : undefined}
           >
-            {i < step ? "✓ " : `${i + 1}. `}
+            {i < step ? <Icon name="check" size={14} /> : <span className="step-num">{i + 1}</span>}
             {s}
-          </span>
+            {i < step && <span className="sr-only"> (done)</span>}
+          </li>
         ))}
-      </div>
+      </ol>
 
       {step === 0 && (
         <>
@@ -206,34 +201,36 @@ export function Onboarding({ onDone }: Props) {
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maya" />
           </label>
           <div className="seed">
-            <h2>Capture your voice</h2>
+            <h2>Record your voice</h2>
             <p>
               Press record and <b>count slowly from 1 to 10</b>, then say:{" "}
               <i>“Hi, this is my voice, and I'd like to keep it.”</i>
             </p>
             {!voiceRec.recording && (
               <button className="big" onClick={voiceRec.start}>
-                ● {voiceUrl ? "Re-record" : "Record my voice"}
+                <span className="rec-dot" aria-hidden="true" />
+                {voiceUrl ? "Record again" : "Start recording"}
               </button>
             )}
             {voiceRec.recording && (
               <button className="big recording" onClick={voiceRec.stop}>
-                ■ Stop ({voiceRec.seconds}s)
+                <span className="stop-square" aria-hidden="true" />
+                Stop ({voiceRec.seconds}s)
               </button>
             )}
             {voiceUrl && (
               <div className="captured">
                 <audio controls src={voiceUrl} />
-                <p className="dim">✓ Voice sample banked — this is what NeurTalk will speak from.</p>
+                <p className="hint">Saved. NeurTalk will speak from this sample.</p>
               </div>
             )}
           </div>
           <div className="wizardnav">
             <button className="big primary" disabled={!voiceUrl && !name.trim()} onClick={() => setStep(1)}>
-              Continue →
+              Continue
             </button>
             <button className="link" onClick={() => setStep(1)}>
-              skip for now
+              Skip for now
             </button>
           </div>
         </>
@@ -248,7 +245,7 @@ export function Onboarding({ onDone }: Props) {
           </p>
           <div className="contextrow">
             <button className="big" onClick={() => fileRef.current?.click()}>
-              ⬆ Upload audio / video
+              Upload audio or video
             </button>
             <input
               ref={fileRef}
@@ -260,25 +257,29 @@ export function Onboarding({ onDone }: Props) {
             />
             {!ctxRec.recording ? (
               <button className="big" onClick={ctxRec.start}>
-                ● Record me talking
+                <span className="rec-dot" aria-hidden="true" />
+                Record me talking
               </button>
             ) : (
               <button className="big recording" onClick={ctxRec.stop}>
-                ■ Stop ({ctxRec.seconds}s)
+                <span className="stop-square" aria-hidden="true" />
+                Stop ({ctxRec.seconds}s)
               </button>
             )}
           </div>
-          <section>
+          <section className="block">
             <h2>Audio bank ({bank.length})</h2>
-            {bank.length === 0 && <p className="dim">Nothing banked yet.</p>}
+            {bank.length === 0 && <p className="hint">Nothing added yet.</p>}
+            <ul className="rows">
             {bank.map((a) => (
-              <div className="card" key={a.id}>
-                <div className="row">
+              <li className="row-item is-stacked" key={a.id}>
+                <div className="row-line">
                   <div>
-                    {a.kind === "voice-sample" ? "🎙" : a.kind === "upload" ? "📁" : "🔴"} <b>{a.label}</b>
-                    <div className="dim">
-                      {a.kind} · {fmtDur(a.duration)} · {new Date(a.addedAt).toLocaleTimeString()}
-                    </div>
+                    <strong>{a.label}</strong>
+                    <span className="meta">
+                      {a.kind === "voice-sample" ? "Voice sample" : a.kind === "upload" ? "Upload" : "Recording"} ·{" "}
+                      {fmtDur(a.duration)}
+                    </span>
                   </div>
                   <button
                     className="link"
@@ -291,36 +292,37 @@ export function Onboarding({ onDone }: Props) {
                       refreshBank();
                     }}
                   >
-                    remove
+                    Remove
                   </button>
                 </div>
                 <SemanticMiner item={a} onMined={onMined} />
-              </div>
+              </li>
             ))}
+            </ul>
             {(mined.expressions.length > 0 || mined.quirks.length > 0) && (
-              <div className="card learned">
-                <b>Semantic map so far</b>
-                <div className="chips" style={{ marginTop: 8 }}>
+              <div className="found">
+                <h3>Found so far</h3>
+                <ul className="tags">
                   {mined.expressions.map((x) => (
-                    <span className="chip learnedchip" key={x}>
-                      ✦ {x}
-                    </span>
+                    <li className="tag is-accent" key={x}>
+                      {x}
+                    </li>
                   ))}
                   {mined.quirks.map((x) => (
-                    <span className="chip" key={x}>
+                    <li className="tag" key={x}>
                       {x}
-                    </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
           </section>
           <div className="wizardnav">
             <button className="big primary" onClick={() => setStep(2)}>
-              Continue →
+              Continue
             </button>
             <button className="link" onClick={() => setStep(0)}>
-              ← back
+              Back
             </button>
           </div>
         </>
@@ -330,21 +332,27 @@ export function Onboarding({ onDone }: Props) {
         <>
           <h1>Who matters to you?</h1>
           <p className="sub">
-            Names, relationships — the people NeurTalk should recognize and speak to the way you would.
+            The people NeurTalk should recognize, and speak to the way you would.
           </p>
-          {people.map((p) => (
-            <div className="card row" key={p.name}>
-              <div>
-                <b>{p.name}</b> — {p.relationship}
-              </div>
-              <button className="link" onClick={() => setPeople(people.filter((x) => x !== p))}>
-                remove
-              </button>
-            </div>
-          ))}
+          {people.length > 0 && (
+            <ul className="rows">
+              {people.map((p) => (
+                <li className="row-item" key={p.name}>
+                  <div>
+                    <strong>{p.name}</strong>
+                    <span className="meta">{p.relationship}</span>
+                  </div>
+                  <button className="link" onClick={() => setPeople(people.filter((x) => x !== p))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="addrow">
-            <input placeholder="Name" value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} />
+            <input aria-label="Name" placeholder="Name" value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} />
             <input
+              aria-label="Relationship"
               placeholder="Relationship (daughter, partner, nurse…)"
               value={np.relationship}
               onChange={(e) => setNp({ ...np, relationship: e.target.value })}
@@ -360,14 +368,14 @@ export function Onboarding({ onDone }: Props) {
             </button>
           </div>
           {people.length === 0 && (
-            <p className="dim">Skip to start with the demo people (Sarah — daughter, Pedro — partner).</p>
+            <p className="hint">If you skip this, NeurTalk starts with two example people: Sarah (daughter) and Pedro (partner).</p>
           )}
           <div className="wizardnav">
             <button className="big primary" onClick={() => setStep(3)}>
-              Continue →
+              Continue
             </button>
             <button className="link" onClick={() => setStep(1)}>
-              ← back
+              Back
             </button>
           </div>
         </>
@@ -377,38 +385,44 @@ export function Onboarding({ onDone }: Props) {
         <>
           <h1>Connect your visual input</h1>
           <p className="sub">
-            NeurTalk reads your surroundings through a wearable camera — smart glasses in the real
-            product. For now, your phone stands in: scan the code and its camera becomes your view.
+            NeurTalk understands your surroundings through a wearable camera. Your phone can be that
+            camera: scan the code and it shares what it sees with this screen.
           </p>
           <div className="visualpanel">
             <div className={`viewfinder${linkStatus === "connected" ? " live" : ""}`}>
               {linkStatus === "connected" ? (
                 <>
                   <video ref={previewRef} muted playsInline />
-                  <span className="livetag">Live</span>
+                  <span className="livetag">
+                    <span className="rec-dot" aria-hidden="true" />
+                    Live
+                  </span>
                 </>
               ) : qr ? (
                 <img src={qr} alt="QR code to connect your phone" className="vf-qr" />
               ) : (
-                <span className="dim">Preparing link…</span>
+                <span className="hint">Preparing link…</span>
               )}
             </div>
             <div className="visualinfo">
-              {linkStatus === "connected" && <span className="badge on">Phone connected</span>}
-              {linkStatus === "error" && <span className="badge off">Link error</span>}
-              {linkStatus !== "connected" && linkStatus !== "error" && (
-                <span className="badge pending">Waiting for phone</span>
-              )}
+              <p className="status-line" role="status">
+                <StatusDot ok={linkStatus === "connected" ? true : linkStatus === "error" ? false : null} />
+                {linkStatus === "connected"
+                  ? "Phone connected"
+                  : linkStatus === "error"
+                    ? "Couldn’t connect"
+                    : "Waiting for your phone"}
+              </p>
               {linkStatus === "connected" ? (
                 <>
-                  <h3>You're seeing what NeurTalk sees.</h3>
-                  <p className="dim">
+                  <h3>This is what NeurTalk sees.</h3>
+                  <p className="hint">
                     Point your phone at the people and objects around you. NeurTalk reads this view to
                     suggest what you might want to say.
                   </p>
                 </>
               ) : linkStatus === "error" ? (
-                <p className="dim">You can connect your phone later from the Talk screen.</p>
+                <p className="hint">You can connect your phone later from Talk.</p>
               ) : (
                 <>
                   <ol className="linksteps">
@@ -420,17 +434,17 @@ export function Onboarding({ onDone }: Props) {
                     </li>
                     <li><span>Your live view appears here</span></li>
                   </ol>
-                  <p className="joinurl">{phoneJoinUrl()}</p>
+                  <code className="joinurl">{phoneJoinUrl()}</code>
                 </>
               )}
             </div>
           </div>
           <div className="wizardnav">
             <button className="big primary" onClick={finish}>
-              {linkStatus === "connected" ? "Finish — open NeurTalk →" : "Finish without phone →"}
+              {linkStatus === "connected" ? "Finish setup" : "Finish without a phone"}
             </button>
             <button className="link" onClick={() => setStep(2)}>
-              ← back
+              Back
             </button>
           </div>
         </>

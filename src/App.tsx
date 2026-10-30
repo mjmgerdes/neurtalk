@@ -6,6 +6,7 @@ import { CommunicationMap } from "./screens/CommunicationMap";
 import { Talk } from "./screens/Talk";
 import { History } from "./screens/History";
 import { PhoneCamera } from "./screens/PhoneCamera";
+import { BrandMark, Icon } from "./components/Icon";
 
 type Tab = "talk" | "map" | "history";
 
@@ -22,55 +23,44 @@ export default function App() {
 
   if (!profile) return <Onboarding onDone={setProfile} />;
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "talk", label: "Talk" },
+    { id: "map", label: "My Map" },
+    { id: "history", label: "History" },
+  ];
+
   return (
     <div className="app">
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <header className="topbar">
-        <div className="brand-lockup" aria-label="NeurTalk home">
-          <span className="brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
+      <header className="appbar">
+        <div className="appbar-inner">
+          <span className="brand">
+            <BrandMark />
+            NeurTalk
           </span>
-          <span>
-            <strong className="brand">NeurTalk</strong>
-            <small>Adaptive communication</small>
+          <nav className="mainnav" aria-label="Primary">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                className={tab === t.id ? "active" : ""}
+                aria-current={tab === t.id ? "page" : undefined}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <span className="device-note" title="Camera, reasoning and history stay on this device">
+            <Icon name="lock" size={14} />
+            On-device
           </span>
         </div>
-        <nav className="mainnav" aria-label="Primary navigation">
-          <button
-            className={tab === "talk" ? "active" : ""}
-            aria-current={tab === "talk" ? "page" : undefined}
-            onClick={() => setTab("talk")}
-          >
-            Talk
-          </button>
-          <button
-            className={tab === "map" ? "active" : ""}
-            aria-current={tab === "map" ? "page" : undefined}
-            onClick={() => setTab("map")}
-          >
-            My map
-          </button>
-          <button
-            className={tab === "history" ? "active" : ""}
-            aria-current={tab === "history" ? "page" : undefined}
-            onClick={() => setTab("history")}
-          >
-            History
-          </button>
-        </nav>
-        <span className="privacy-note"><i aria-hidden="true" /> Private &amp; on-device</span>
       </header>
-      <main id="main-content">
+      <main id="main-content" className="workspace">
         {tab === "talk" && <Talk profile={profile} onProfileChange={setProfile} />}
         {tab === "map" && <CommunicationMap profile={profile} onProfileChange={setProfile} />}
         {tab === "history" && <History profile={profile} />}
       </main>
-      <footer className="app-footer">
-        <span>Context proposes.</span>
-        <span>The person disposes.</span>
-      </footer>
     </div>
   );
 }

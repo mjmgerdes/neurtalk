@@ -13,6 +13,7 @@ import { startPhoneSender, type LinkMessage } from "../peer/phoneLink";
 const YAW_THRESHOLD = 15; // degrees off neutral = left/right
 const NOD_THRESHOLD = 14; // degrees downward pitch delta = nod
 const NOD_RESET_MS = 900;
+const DEBUG = new URLSearchParams(location.search).has("debug");
 
 function angleDelta(a: number, b: number): number {
   // shortest signed distance between two compass angles
@@ -119,7 +120,7 @@ export function PhoneCamera() {
   }
 
   useEffect(() => {
-    if (!hostId) setStatus("Missing session code — rescan the QR from NeurTalk.");
+    if (!hostId) setStatus("This link is missing its session code. Scan the QR code in NeurTalk again.");
     return () => window.removeEventListener("deviceorientation", handleOrientation);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hostId]);
@@ -136,28 +137,28 @@ export function PhoneCamera() {
               {c.text}
             </div>
           ))}
-          <div className="hudhint">tilt to choose · nod to select</div>
+          <div className="hudhint">Turn to select · Nod to speak</div>
         </div>
       )}
       {candidates && stage === "confirming" && (
-        <div className="hud confirm">
+        <div className="hud is-centered">
           <div className="hudconfirm">
             <div className="hudtext">“{candidates[highlighted].text}”</div>
-            <div className="hudask">Speak this? Nod again.</div>
+            <div className="hudask">Nod again to speak</div>
           </div>
         </div>
       )}
       {spoken && (
-        <div className="hud confirm">
-          <div className="hudconfirm spoken">🔊 “{spoken}”</div>
+        <div className="hud is-centered">
+          <div className="hudconfirm">“{spoken}”</div>
         </div>
       )}
 
-      {started && <div className="huddebug">{debug}</div>}
+      {started && DEBUG && <div className="huddebug">{debug}</div>}
 
       {(!started || status) && (
         <div className="phonecam-overlay" onClick={start}>
-          <b>NeurTalk — glasses view</b>
+          <b>NeurTalk camera</b>
           <span>{status}</span>
           {!started && hostId && <button className="big primary">Start streaming</button>}
         </div>

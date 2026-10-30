@@ -89,7 +89,7 @@ npm run dev                  # open http://localhost:5173, allow camera + mic
 ### Demo walkthrough
 
 1. **Onboard** — four steps: record a voice sample (count to 10), add audio context (upload MP3s/videos or record yourself — all logged in the audio bank), add your people, then scan the QR code with your phone so its camera becomes your "glasses".
-2. **Talk** — point the phone (or laptop camera) at a scene, type what was just said to you ("Do you need anything?"), press **Read scene**.
+2. **Talk** — point the phone (or laptop camera) at a scene, type what was just said to you ("Do you need anything?"), press **Suggest replies**.
 3. Three candidates appear. **Turn your head** left/center/right to highlight, **nod** to select, nod again to speak.
 4. **Edit** a candidate ("bring" → "grab") — watch *Preference learned* appear, and check the **Communication map** to see the bank grow.
 5. Switch the access dropdown to **keys** or **single switch** — same brain, different body.

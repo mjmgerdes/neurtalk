@@ -16,6 +16,7 @@ import { addCorrection, saveProfile } from "../state/profile";
 import { recordSpoken } from "../state/history";
 import { recordContext } from "../state/contextLog";
 import QRCode from "qrcode";
+import { Icon, StatusDot } from "../components/Icon";
 import {
   onPhoneMessage,
   phoneJoinUrl,
@@ -29,6 +30,22 @@ import {
 interface Props {
   profile: Profile;
   onProfileChange: (p: Profile) => void;
+}
+
+// Developer readouts (pose values, model id) only render with ?debug in the URL.
+const DEBUG = new URLSearchParams(location.search).has("debug");
+
+// Slot order is spatial: head turn left/center/right maps to slots 0/1/2.
+const SLOT_DIRECTION = ["Turn left", "Look ahead", "Turn right"] as const;
+
+const GUIDANCE: Record<AccessMethod, { move: string; speak: string; confirm: string }> = {
+  head: { move: "Turn to select", speak: "Nod to speak", confirm: "Nod again to speak" },
+  keys: { move: "Press 1, 2 or 3", speak: "Enter to speak", confirm: "Press Enter to speak, Esc to go back" },
+  switch: { move: "Selection moves on its own", speak: "Space to speak", confirm: "Press Space to speak" },
+};
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 // Fixed, user-approved urgent messages that bypass generative inference entirely.
@@ -64,13 +81,21 @@ export function Talk({ profile, onProfileChange }: Props) {
   const [, linkTick] = useState(0);
   const [qr, setQr] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [speaking, setSpeaking] = useState<string | null>(null);
+  const [camState, setCamState] = useState<"starting" | "live" | "error">("starting");
+  const responsesRef = useRef<HTMLElement>(null);
 
   const sel = useSelection(method, candidates !== null && editing === null, async (slot, stage) => {
     if (!candidates) return;
     if (stage === "confirming") {
       const text = candidates[slot].text;
       sendToPhone({ type: "spoken", text });
-      await speak(text, profile.voiceName);
+      setSpeaking(text);
+      try {
+        await speak(text, profile.voiceName);
+      } finally {
+        setSpeaking(null);
+      }
       setSpoken((s) => [text, ...s]);
       recordSpoken({
         text,
@@ -94,6 +119,7 @@ export function Talk({ profile, onProfileChange }: Props) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        setCamState("live");
       }
       const t = new HeadTracker();
       await t.init();
@@ -103,7 +129,10 @@ export function Talk({ profile, onProfileChange }: Props) {
       };
       if (videoRef.current) t.start(videoRef.current);
       trackerRef.current = t;
-    })().catch((e) => console.error("camera/tracker init failed", e));
+    })().catch((e) => {
+      console.error("camera/tracker init failed", e);
+      if (!videoRef.current?.srcObject) setCamState("error");
+    });
     return () => trackerRef.current?.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -141,6 +170,25 @@ export function Talk({ profile, onProfileChange }: Props) {
     }
   });
 
+  // Head and switch users can't scroll, so new suggestions are brought into view.
+  useEffect(() => {
+    if (candidates) {
+      responsesRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
+  }, [candidates]);
+
+  // Pointer/touch (e.g. a caregiver): first press highlights, pressing the
+  // highlighted response asks to speak it. Keyboard-originated clicks are
+  // ignored in keys/switch mode, where the global key handlers already act.
+  function onCandidateClick(e: React.MouseEvent, slot: SelectionSlot) {
+    if (e.detail === 0 && method !== "head") return;
+    if (sel.highlighted === slot) sel.confirmExternal();
+    else sel.highlightExternal(slot);
+  }
+
   async function connectPhone() {
     startHost();
     setQr(await QRCode.toDataURL(phoneJoinUrl(), { width: 220, margin: 1 }));
@@ -160,7 +208,7 @@ export function Talk({ profile, onProfileChange }: Props) {
   }
 
   async function readScene() {
-    setBusy("Reading the scene…");
+    setBusy("Looking at the scene…");
     setCandidates(null);
     try {
       const online = await ollamaAvailable();
@@ -176,7 +224,7 @@ export function Talk({ profile, onProfileChange }: Props) {
           source: phoneLinkStatus() === "connected" ? "phone" : "laptop",
           at: Date.now(),
         });
-        setBusy("Generating what you might want to say…");
+        setBusy("Writing suggestions…");
         cands = await generateCandidates(profile, ctx, recentPrompt || undefined);
         setUsedFallback(false);
       } else {
@@ -234,179 +282,313 @@ export function Talk({ profile, onProfileChange }: Props) {
       saveProfile(next);
     }
     onProfileChange(next);
-    setToast(`Preference learned: ${learned}${expression ? ` · new expression: "${expression}"` : ""}`);
+    flash(`Saved. NeurTalk will prefer ${learned}${expression ? `, and learned “${expression}”` : ""}.`);
+  }
+
+  const phoneConnected = phoneLinkStatus() === "connected";
+  const guide = GUIDANCE[method];
+
+  function flash(message: string) {
+    setToast(message);
     setTimeout(() => setToast(null), 4500);
   }
 
   return (
     <div className="screen talk">
-      <header className="screen-heading">
-        <div>
-          <p className="eyebrow">Communication workspace</p>
-          <h1>Say what you mean.</h1>
-          <p className="sub">NeurTalk reads the moment, then offers three distinctly yours ways to respond.</p>
-        </div>
-        <div className="interaction-hint" aria-label="Selection instructions">
-          <span>turn to choose</span>
-          <i aria-hidden="true">→</i>
-          <span>nod to speak</span>
-        </div>
+      <header className="page-head">
+        <h1>Say what you mean.</h1>
+        <p className="lede">
+          Suggestions come from what was just said, what your camera sees, and the way you usually talk.
+        </p>
       </header>
 
-      <div className="statusbar">
-        <span className={`badge ${gemmaOnline ? "on" : "off"}`}>
-          {gemmaOnline ? `Gemma local · ${MODEL}` : "Gemma offline · demo candidates"}
-        </span>
-        <span className={`badge ${pose.faceDetected ? "on" : "off"}`}>
-          {pose.faceDetected ? "face tracked" : "no face"}
-        </span>
-        <select value={method} onChange={(e) => setMethod(e.target.value as AccessMethod)}>
-          <option value="head">Access: head control</option>
-          <option value="keys">Access: keys (1/2/3 + Enter)</option>
-          <option value="switch">Access: single switch (scan + Space)</option>
-        </select>
-        <button onClick={() => trackerRef.current?.calibrate()}>Calibrate neutral</button>
-        <span className={`badge ${phoneLinkStatus() === "connected" ? "on" : "off"}`}>
-          {phoneLinkStatus() === "connected" ? "phone camera live" : "no phone camera"}
-        </span>
-        {phoneLinkStatus() !== "connected" && (
-          <button onClick={connectPhone}>Connect phone (glasses)</button>
+      <div className="toolbar">
+        <dl className="toolbar-status" aria-label="Input and device status">
+          <div className="tool">
+            <dt>
+              <label htmlFor="access-method">Input</label>
+            </dt>
+            <dd>
+              <select id="access-method" value={method} onChange={(e) => setMethod(e.target.value as AccessMethod)}>
+                <option value="head">Head control</option>
+                <option value="keys">Keyboard</option>
+                <option value="switch">Single switch</option>
+              </select>
+            </dd>
+          </div>
+          {method === "head" && (
+            <div className="tool">
+              <dt>Tracking</dt>
+              <dd>
+                <StatusDot ok={camState === "error" ? false : pose.faceDetected} />
+                {camState === "error" ? "Camera unavailable" : pose.faceDetected ? "Face found" : "Looking for your face"}
+              </dd>
+            </div>
+          )}
+          <div className="tool">
+            <dt>Phone camera</dt>
+            <dd>
+              <StatusDot ok={phoneConnected} />
+              {phoneConnected ? "Connected" : "Not connected"}
+            </dd>
+          </div>
+          <div className="tool">
+            <dt>Suggestions</dt>
+            <dd>
+              <StatusDot ok={gemmaOnline} />
+              {gemmaOnline === null ? "Checking…" : gemmaOnline ? "On-device model" : "Sample set, model offline"}
+              {DEBUG && gemmaOnline && <code className="debug"> {MODEL}</code>}
+            </dd>
+          </div>
+        </dl>
+        {method === "head" && (
+          <button
+            className="toolbar-action"
+            onClick={() => {
+              trackerRef.current?.calibrate();
+              flash("Neutral position set.");
+            }}
+            title="Look straight ahead, then press to set your resting position"
+          >
+            Calibrate
+          </button>
         )}
       </div>
 
-      {showQr && phoneLinkStatus() !== "connected" && qr && (
-        <div className="qrbox inline">
-          <img src={qr} alt="QR to connect phone" />
-          <div>
-            <p>Scan with your phone — its camera becomes your visual input.</p>
-            <p className="joinurl">{phoneJoinUrl()}</p>
-            <button className="link" onClick={() => setShowQr(false)}>
-              hide
-            </button>
-          </div>
-        </div>
-      )}
-
-      <section className="capture-panel" aria-label="Scene input">
-        <div className="panel-label"><span>01</span> Live visual context</div>
-        <div className="videorow">
-          <div className="videowrap">
-            <video ref={videoRef} muted playsInline className="mirror" />
-            <div className="posedebug">
-              yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · thresholds ±{TUNING.yawThreshold}/
-              {TUNING.nodThreshold}
+      <section className="block" aria-labelledby="context-heading">
+        <h2 id="context-heading">Context</h2>
+        <div className="feeds">
+          <figure className="feed">
+            <div className={`feed-frame${camState === "live" ? " is-live" : ""}`}>
+              <video ref={videoRef} muted playsInline className="mirror" />
+              {camState !== "live" && (
+                <div className="feed-empty">
+                  <p>{camState === "error" ? "Camera unavailable. Check browser permissions." : "Starting camera…"}</p>
+                </div>
+              )}
             </div>
-            <div className="videolabel">you · head control</div>
-          </div>
-          <div className={`videowrap ${phoneLinkStatus() === "connected" ? "" : "hiddenvid"}`}>
-            <video ref={sceneVideoRef} muted playsInline />
-            <div className="videolabel">your view · phone camera</div>
-          </div>
-        </div>
+            <figcaption>
+              <strong>You</strong>
+              <span>{method === "head" ? "Head tracking" : "Camera"}</span>
+              {DEBUG && (
+                <code className="debug">
+                  yaw {pose.yaw.toFixed(3)} · pitch {pose.pitch.toFixed(3)} · ±{TUNING.yawThreshold}/{TUNING.nodThreshold}
+                </code>
+              )}
+            </figcaption>
+          </figure>
 
-        <div className="prompt-label">What did you just hear?</div>
-        <div className="contextrow prompt-row">
-          <input
-            aria-label="What was just said to you?"
-            value={recentPrompt}
-            onChange={(e) => setRecentPrompt(e.target.value)}
-            placeholder='e.g. “Do you need anything?”'
-          />
-          <button className="primary" onClick={readScene} disabled={!!busy}>
-            {busy ?? "Read the moment"}
-            {!busy && <span aria-hidden="true">↗</span>}
-          </button>
+          <figure className="feed">
+            <div className={`feed-frame${phoneConnected ? " is-live" : ""}`}>
+              <video ref={sceneVideoRef} muted playsInline hidden={!phoneConnected} />
+              {!phoneConnected && showQr && qr && (
+                <div className="feed-empty feed-qr">
+                  <img src={qr} alt="QR code to connect your phone" />
+                  <div>
+                    <p>Scan with your phone camera, then tap Start streaming.</p>
+                    <code className="joinurl">{phoneJoinUrl()}</code>
+                    <button className="link" onClick={() => setShowQr(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!phoneConnected && !(showQr && qr) && (
+                <div className="feed-empty">
+                  <Icon name="phone" size={20} />
+                  <p>Use your phone as a wearable camera so NeurTalk sees what you see.</p>
+                  <button onClick={connectPhone}>Connect phone</button>
+                </div>
+              )}
+            </div>
+            <figcaption>
+              <strong>Your view</strong>
+              <span>Phone camera</span>
+            </figcaption>
+          </figure>
         </div>
 
         {context && (
-          <div className="chips context-chips">
-            {context.people_present.map((p) => (
-              <span className="chip person" key={p}>
-                <i aria-hidden="true" /> {p}
-              </span>
+          <p className="seen">
+            <span className="seen-label">Seen</span>
+            <span>
+              {[...context.people_present, ...context.objects_visible, context.location].filter(Boolean).join(" · ")}
+            </span>
+            {usedFallback && <span className="seen-note">Sample scene. The on-device model isn't running.</span>}
+          </p>
+        )}
+      </section>
+
+      <section className="block" aria-labelledby="heard-heading">
+        <h2 id="heard-heading">
+          <label htmlFor="last-heard">Last heard</label>
+        </h2>
+        <div className="heard-row">
+          <input
+            id="last-heard"
+            value={recentPrompt}
+            onChange={(e) => setRecentPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !busy) readScene();
+            }}
+            placeholder="What did someone just say to you?"
+          />
+          <button className="primary big" onClick={readScene} disabled={!!busy} aria-busy={!!busy} aria-live="polite">
+            {busy ? (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                {busy}
+              </>
+            ) : candidates ? (
+              "Update suggestions"
+            ) : (
+              "Suggest replies"
+            )}
+          </button>
+        </div>
+      </section>
+
+      <section className="block responses" ref={responsesRef} aria-labelledby="responses-heading">
+        <div className="block-head">
+          <h2 id="responses-heading">Suggested responses</h2>
+          <p className="guidance">
+            <span>{guide.move}</span>
+            <span aria-hidden="true">·</span>
+            <span>{guide.speak}</span>
+          </p>
+        </div>
+
+        {speaking ? (
+          <div className="speak-panel is-speaking" role="status">
+            <p className="speak-label">
+              <Icon name="speaker" />
+              Speaking
+            </p>
+            <p className="speak-text">“{speaking}”</p>
+          </div>
+        ) : candidates && sel.stage === "confirming" ? (
+          <div className="speak-panel" role="status">
+            <p className="speak-label">
+              <Icon name="check" />
+              Ready to speak
+            </p>
+            <p className="speak-text">“{candidates[sel.highlighted].text}”</p>
+            <div className="speak-actions">
+              <button className="primary big" onClick={sel.confirmExternal}>
+                <Icon name="speaker" />
+                Speak
+              </button>
+              <button className="big" onClick={sel.cancel}>
+                Back
+              </button>
+              <span className="guidance">{guide.confirm}</span>
+            </div>
+          </div>
+        ) : candidates ? (
+          <>
+            <ol className="candidates">
+              {candidates.map((c, i) => {
+                const on = sel.highlighted === i;
+                return (
+                  <li key={i} className={`candidate${on ? " is-highlighted" : ""}`}>
+                    <button
+                      className="candidate-main"
+                      onClick={(e) => onCandidateClick(e, i as SelectionSlot)}
+                      aria-pressed={on}
+                    >
+                      <span className="candidate-meta">
+                        <kbd className="slot-key">{i + 1}</kbd>
+                        {method === "head" && <span>{SLOT_DIRECTION[i]}</span>}
+                        {on && (
+                          <span className="selected-tag">
+                            <Icon name="check" size={14} />
+                            Selected
+                          </span>
+                        )}
+                      </span>
+                      <span className="candidate-text">{c.text}</span>
+                    </button>
+                    <button
+                      className="link candidate-edit"
+                      onClick={() => startEdit(i as SelectionSlot)}
+                      aria-label={`Edit response ${i + 1}`}
+                    >
+                      <Icon name="pencil" size={14} />
+                      Edit
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="sr-only" aria-live="polite">
+              Selected {sel.highlighted + 1}: {candidates[sel.highlighted].text}
+            </p>
+          </>
+        ) : (
+          <ol className="candidates is-empty" aria-label="No suggestions yet">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="candidate-placeholder">
+                <kbd className="slot-key">{i + 1}</kbd>
+                {method === "head" && <span>{SLOT_DIRECTION[i]}</span>}
+              </li>
             ))}
-            {context.objects_visible.map((o) => (
-              <span className="chip" key={o}>
-                {o}
-              </span>
-            ))}
-            <span className="chip">{context.location}</span>
-            {usedFallback && <span className="chip warn">demo context · Gemma offline</span>}
+            <li className="empty-note">Choose Suggest replies and three responses appear here.</li>
+          </ol>
+        )}
+
+        {editing !== null && (
+          <div className="editbox">
+            <label htmlFor="edit-response">Edit response {editing + 1}</label>
+            <textarea id="edit-response" value={editText} onChange={(e) => setEditText(e.target.value)} rows={2} autoFocus />
+            <div className="editbox-actions">
+              <button className="primary" onClick={saveEdit}>
+                Save and remember
+              </button>
+              <button className="link" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+              <span className="hint">NeurTalk learns your wording from edits.</span>
+            </div>
           </div>
         )}
       </section>
 
-      {candidates && sel.stage === "choosing" && (
-        <section className="response-panel" aria-label="Suggested responses">
-          <div className="panel-label"><span>02</span> Choose your response</div>
-          <div className="cards">
-            {candidates.map((c, i) => (
-              <div key={i} className={`candidate ${sel.highlighted === i ? "highlighted" : ""}`}>
-                <div className="candidate-topline">
-                  <div className="intent">{c.intent}</div>
-                  <span className="direction">{i === 0 ? "Left" : i === 1 ? "Center" : "Right"}</span>
-                </div>
-                <div className="text">{c.text}</div>
-                <button className="link edit-link" onClick={() => startEdit(i as SelectionSlot)}>
-                  Edit response
-                </button>
-              </div>
+      <section className="block urgent" aria-labelledby="urgent-heading">
+        <div className="block-head">
+          <h2 id="urgent-heading">Urgent</h2>
+          <p className="guidance">Spoken exactly as written</p>
+        </div>
+        <div className="urgent-row">
+          {URGENT.map((u) => (
+            <button
+              key={u}
+              className="urgent-btn"
+              onClick={() => {
+                speak(u, profile.voiceName);
+                recordSpoken({ text: u, method, msToMessage: 0, edited: false, urgent: true, at: Date.now() });
+              }}
+            >
+              <Icon name="alert" />
+              {u}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {spoken.length > 0 && (
+        <section className="block" aria-labelledby="spoken-heading">
+          <h2 id="spoken-heading">Spoken this session</h2>
+          <ul className="plain-list">
+            {spoken.map((s, i) => (
+              <li key={i}>“{s}”</li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 
-      {candidates && sel.stage === "confirming" && (
-        <div className="confirm">
-          <div className="confirmtext">“{candidates[sel.highlighted].text}”</div>
-          <div className="confirmhint">
-            Speak this? {method === "head" ? "Nod again to speak" : method === "keys" ? "Enter to speak" : "Press switch to speak"} ·{" "}
-            <button className="link" onClick={sel.cancel}>
-              cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {editing !== null && (
-        <div className="editbox">
-          <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={2} />
-          <button className="primary" onClick={saveEdit}>
-            Save — teach my bank
-          </button>
-          <button className="link" onClick={() => setEditing(null)}>
-            cancel
-          </button>
-        </div>
-      )}
-
-      {toast && <div className="toast">✦ {toast}</div>}
-
-      <div className="urgent">
-        <span className="urgent-label">Urgent phrases</span>
-        {URGENT.map((u) => (
-          <button
-            key={u}
-            className="urgentbtn"
-            onClick={() => {
-              speak(u, profile.voiceName);
-              recordSpoken({ text: u, method, msToMessage: 0, edited: false, urgent: true, at: Date.now() });
-            }}
-          >
-            {u}
-          </button>
-        ))}
-        <span className="dim">Fixed messages · never AI-generated</span>
-      </div>
-
-      {spoken.length > 0 && (
-        <div className="history">
-          <h2>Spoken</h2>
-          {spoken.map((s, i) => (
-            <div className="dim" key={i}>
-              🔊 {s}
-            </div>
-          ))}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
         </div>
       )}
     </div>

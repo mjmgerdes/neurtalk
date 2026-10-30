@@ -24,25 +24,30 @@ export function History({ profile }: Props) {
     a.click();
   }
 
+  const methodLabel = { head: "Head control", keys: "Keyboard", switch: "Single switch" } as const;
+
   return (
     <div className="screen history">
-      <h1>Communication history</h1>
-      <p className="sub">
-        Recorded on this device only. Everything here can be deleted. The report is yours to share —
-        or not.
-      </p>
+      <header className="page-head">
+        <h1>History</h1>
+        <p className="lede">
+          What you've said, recorded on this device only. Delete it anytime. The access report is yours
+          to share with a speech therapist or care team, or not.
+        </p>
+      </header>
 
-      <div className="contextrow">
+      <div className="actions">
         <button
           className="primary"
           onClick={() => setReport(buildAccessReport(entries, profile.corrections.length))}
         >
-          Generate access report
+          Create access report
         </button>
         <button onClick={download} disabled={entries.length === 0}>
-          Download .txt
+          Download as text
         </button>
         <button
+          className="danger-quiet"
           onClick={() => {
             setEntries(clearHistory());
             setReport(null);
@@ -55,17 +60,24 @@ export function History({ profile }: Props) {
 
       {report && <pre className="report">{report}</pre>}
 
-      {entries.length === 0 && <p className="dim">Nothing spoken yet.</p>}
-      {entries.map((e, i) => (
-        <div className="card" key={i}>
-          🔊 “{e.text}”
-          <div className="dim">
-            {new Date(e.at).toLocaleTimeString()} · {e.method}
-            {e.urgent ? " · urgent (fixed message)" : ` · ${(e.msToMessage / 1000).toFixed(1)}s to speak`}
-            {e.edited ? " · edited first" : ""}
-          </div>
-        </div>
-      ))}
+      <section className="block" aria-labelledby="spoken-h">
+        <h2 id="spoken-h">Spoken</h2>
+        {entries.length === 0 && <p className="hint">Nothing spoken yet. Responses you speak on Talk appear here.</p>}
+        <ul className="rows">
+          {entries.map((e, i) => (
+            <li className="row-item is-stacked" key={i}>
+              <span className="history-text">“{e.text}”</span>
+              <span className="meta">
+                {new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                {" · "}
+                {methodLabel[e.method] ?? e.method}
+                {e.urgent ? " · Urgent phrase" : ` · ${(e.msToMessage / 1000).toFixed(1)}s to speak`}
+                {e.edited ? " · Edited first" : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

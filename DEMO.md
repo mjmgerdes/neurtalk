@@ -4,10 +4,10 @@
 - [ ] Ollama running with the hosted origin allowed (required if demoing from the github.io URL; harmless otherwise):
       `OLLAMA_ORIGINS="https://mjmgerdes.github.io" ollama serve`
       (run directly in a terminal — the brew service doesn't start reliably). Verify: `curl localhost:11434/api/tags`
-- [ ] Warm the model once: hit **Read scene** a single time so gemma4 is resident (first call pays load cost)
+- [ ] Warm the model once: hit **Suggest replies** a single time so gemma4 is resident (first call pays load cost)
 - [ ] `npm run dev` → localhost:5173, camera + mic allowed
-- [ ] Sit where you'll present, click **Calibrate neutral**
-- [ ] Check the two badges: `Gemma local · gemma4` green, `face tracked` green
+- [ ] Sit where you'll present, click **Calibrate**
+- [ ] Check the toolbar: Suggestions = `On-device model`, Tracking = `Face found` (add `?debug` to the URL to see the model id and pose values)
 - [ ] Volume up. Test one urgent button aloud.
 - [ ] Do NOT switch Ollama models during the demo (model swap caused a transient failure in testing)
 
@@ -17,10 +17,10 @@
 "ALS takes your speech and your hands, but not what you want to say. Today's tools make you rebuild every sentence — about 40 selections through whatever movement you have left. NeurTalk flips that: the environment supplies context, my personal bank supplies identity, and I supply only intent."
 
 **0:20 — Mine my semantics** (Communication map tab, or onboarding step 2)
-Upload the sample MP3 → "transcribe & map" (Whisper, on-device) → transcript appears → "Extract semantics with Gemma" → chips appear: ✦ "I want that damn ___", quirks, people. "Gemma just learned how *I* talk — not how an assistant talks. Every memory here is editable and deletable, and there's a log of every piece of context I've contributed."
+Upload the sample MP3 → "Transcribe and find expressions" (Whisper, on-device) → transcript appears → "Find expressions" → chips appear: ✦ "I want that damn ___", quirks, people. "Gemma just learned how *I* talk — not how an assistant talks. Every memory here is editable and deletable, and there's a log of every piece of context I've contributed."
 
 **0:40 — The moment** (Talk tab)
-"Now imagine my speech and hands are gone." If not already linked from onboarding, hit **Connect phone (glasses)**, scan the QR, tap Start streaming — your phone's view appears on screen ("in the real product this is smart glasses"). Point the phone at the staged scene (person + mug). Type/keep "Do you need anything?" → **Read scene**.
+"Now imagine my speech and hands are gone." If not already linked from onboarding, hit **Connect phone** in the Your view panel, scan the QR, tap Start streaming — your phone's view appears on screen ("in the real product this is smart glasses"). Point the phone at the staged scene (person + mug). Type/keep "Do you need anything?" → **Suggest replies**.
 While it thinks: "A camera frame is going to Gemma running ON this laptop — nothing leaves the device. It reads the scene, crosses it with my bank, and proposes three genuinely different intents."
 
 **1:10 — Select through the glasses**
