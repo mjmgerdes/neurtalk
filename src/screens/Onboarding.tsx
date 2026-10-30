@@ -380,23 +380,49 @@ export function Onboarding({ onDone }: Props) {
             NeurTalk reads your surroundings through a wearable camera — smart glasses in the real
             product. For now, your phone stands in: scan the code and its camera becomes your view.
           </p>
-          <div className="linkrow">
-            {qr && linkStatus !== "connected" && (
-              <div className="qrbox">
-                <img src={qr} alt="QR to connect phone" />
-                <p className="dim">Scan with your phone camera</p>
-                <p className="joinurl">{phoneJoinUrl()}</p>
-              </div>
-            )}
-            <div className="linkstatus">
-              {linkStatus === "waiting" && <p>⏳ Waiting for your phone to connect…</p>}
-              {linkStatus === "connected" && (
+          <div className="visualpanel">
+            <div className={`viewfinder${linkStatus === "connected" ? " live" : ""}`}>
+              {linkStatus === "connected" ? (
                 <>
-                  <p>✅ Phone connected — live view:</p>
-                  <video ref={previewRef} muted playsInline className="phonepreview" />
+                  <video ref={previewRef} muted playsInline />
+                  <span className="livetag">Live</span>
+                </>
+              ) : qr ? (
+                <img src={qr} alt="QR code to connect your phone" className="vf-qr" />
+              ) : (
+                <span className="dim">Preparing link…</span>
+              )}
+            </div>
+            <div className="visualinfo">
+              {linkStatus === "connected" && <span className="badge on">Phone connected</span>}
+              {linkStatus === "error" && <span className="badge off">Link error</span>}
+              {linkStatus !== "connected" && linkStatus !== "error" && (
+                <span className="badge pending">Waiting for phone</span>
+              )}
+              {linkStatus === "connected" ? (
+                <>
+                  <h3>You're seeing what NeurTalk sees.</h3>
+                  <p className="dim">
+                    Point your phone at the people and objects around you. NeurTalk reads this view to
+                    suggest what you might want to say.
+                  </p>
+                </>
+              ) : linkStatus === "error" ? (
+                <p className="dim">You can connect your phone later from the Talk screen.</p>
+              ) : (
+                <>
+                  <ol className="linksteps">
+                    <li><span>Scan the code with your phone camera</span></li>
+                    <li>
+                      <span>
+                        Tap <b>Start streaming</b> on your phone
+                      </span>
+                    </li>
+                    <li><span>Your live view appears here</span></li>
+                  </ol>
+                  <p className="joinurl">{phoneJoinUrl()}</p>
                 </>
               )}
-              {linkStatus === "error" && <p>⚠️ Link error — you can connect later from the Talk screen.</p>}
             </div>
           </div>
           <div className="wizardnav">
