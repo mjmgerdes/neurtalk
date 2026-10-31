@@ -296,7 +296,7 @@ export function Talk({ profile, onProfileChange }: Props) {
   return (
     <div className="screen talk">
       <header className="page-head">
-        <h1>Say what you mean.</h1>
+        <h1>Welcome to NeurTalk V0</h1>
         <p className="lede">
           Suggestions come from what was just said, what your camera sees, and the way you usually talk.
         </p>
